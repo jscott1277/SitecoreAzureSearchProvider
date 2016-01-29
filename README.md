@@ -1,4 +1,4 @@
-# SitecoreAzureSearchProvider
+# Sitecore 8.1 Azure Search Provider
 A replacement to the default Lucene search provider in Sitecore 8.1.  Uses Azure Search instead.
 
 Currently only indexing, via a full Rebuild is supported.
