@@ -1,0 +1,53 @@
+﻿@using Sitecore.ExperienceExplorer.Business.Constants;
+@using Sitecore.ExperienceExplorer.Business.Helpers;
+@using Sitecore.ExperienceExplorer.Business.Managers;
+@using Sitecore.Publishing;
+@using Sitecore.Web;
+
+@{
+    // TODO Figure out how to keep logged in state properly after Page Editor usage
+    if (!Sitecore.Context.IsLoggedIn)
+    {
+        PreviewManager.RestoreUser();
+    }
+
+    // Toggle OFF
+    var queryString = WebUtil.GetQueryString(SettingsHelper.AddOnQueryStringKey);
+    var disabledFromQuery = queryString == "0";
+    if (disabledFromQuery || PageModeHelper.IsEditMode || PageModeHelper.IsPreviewMode || PageModeHelper.IsDebugMode)
+    {
+        ModuleManager.Disable();
+        return;
+    }
+
+    // Toggle ON
+    var enabledFromQuery = queryString == "1";
+    if (enabledFromQuery)
+    {
+        ModuleManager.Enable();
+    }
+
+
+
+    var isExpViewEnabled = ModuleManager.IsExpViewModeActive;
+
+    if (Sitecore.Context.IsLoggedIn && isExpViewEnabled && PageModeHelper.HasPermission && !PageModeHelper.IsInternalRequest)
+    { 
+    <link rel="stylesheet" type="text/css" href="/sitecore modules/Web/ExperienceExplorer/Assets/css/experience-explorer.css" />
+
+    <div class="experience-explorer">
+      <div class="panel editor">
+        <span id="pageEditorHeader"></span>
+        <button type="button" class="page-editor-button" onclick="javascript:window.top.location.href='/?sc_mode=edit';">Experience Editor</button>
+        <a class="trigger" href="#"></a>
+        <iframe scrolling="no" src="@Html.Raw(Paths.Module.Controls.RelativePath)ExpEditor.aspx?@Html.Raw(SettingsHelper.AddOnQueryStringKey)=1&@Html.Raw(SettingsHelper.ContextItemIdQueryStringKey)=@Html.Raw(Sitecore.Context.Item.ID.ToString())&@Html.Raw(SettingsHelper.ContextDeviceIdQueryStringKey)=@Html.Raw(Sitecore.Context.Device.ID.ToString())&@Html.Raw(SettingsHelper.CurrentWebsiteStringKey)=@Html.Raw(Sitecore.Context.Site.Name)&sc_preventProfilesScoring=1&sc_lang=@Html.Raw(Sitecore.ExperienceExplorer.Web.Controls.ExpExplorerExtender.LanguageName)" id="IframeExperienceExplorerEditor" class="ee-iframe"></iframe>
+      </div>
+        <div class="panel viewer">
+            <a class="trigger" href="#"></a>
+            <iframe scrolling="no" src="@Html.Raw(Paths.Module.Controls.RelativePath)ExpViewer.aspx?@Html.Raw(SettingsHelper.AddOnQueryStringKey)=1&@Html.Raw(SettingsHelper.ContextItemIdQueryStringKey)=@Html.Raw(Sitecore.Context.Item.ID.ToString())&@Html.Raw(SettingsHelper.ContextDeviceIdQueryStringKey)=@Html.Raw(Sitecore.Context.Device.ID.ToString())&@Html.Raw(SettingsHelper.CurrentWebsiteStringKey)=@Html.Raw(Sitecore.Context.Site.Name)&sc_preventProfilesScoring=1&sc_lang=@Html.Raw(Sitecore.ExperienceExplorer.Web.Controls.ExpExplorerExtender.LanguageName)" id="IframeExperienceExplorerViewer" class="ee-iframe"></iframe>
+        </div>
+    </div>
+
+    <script src="/sitecore modules/Web/ExperienceExplorer/Assets/experience-explorer.min.js"></script>
+    }
+}
