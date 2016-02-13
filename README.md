@@ -9,3 +9,4 @@ Prerequisites:
 * Visual Studio 2015
 * Sitecore Instance Manager (Used to create the Visual Studio solution)
 * Azure Subscription with an Azure Search instance
+* Follow the instructions in the root folder's Readme.txt file.
