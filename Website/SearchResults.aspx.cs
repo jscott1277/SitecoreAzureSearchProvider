@@ -42,8 +42,14 @@ namespace Website
 
                     var queryable = context.GetQueryable<AzureSearchResultItem>();
                     queryable = queryable.Where(predicate);
-                    //Only first orderby is being honored, appears to be an Azure Search Bug....
+                    //TODO:  Only first orderby is being honored, appears to be an Azure Search Bug....
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
+
+                    //TODO: Filter method support
+                    //queryable = queryable.Filter(o => o.TemplateName != null);
+
+                    //TODO:  GetFacets extension method support
+                    //var facets = queryable.FacetOn(o => o.TemplateName).GetFacets();
 
                     var results = queryable.GetResults();
                     gvResults.DataSource = results.Hits.Select(r => r.Document);
