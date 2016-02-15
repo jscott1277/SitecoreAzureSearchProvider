@@ -457,55 +457,9 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected virtual Query VisitContains(ContainsNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
         {
-            var fieldNode = QueryHelper.GetFieldNode(node);
-            ConstantNode valueNode = QueryHelper.GetValueNode<string>(node);
-            object obj = base.ValueFormatter.FormatValueForIndexStorage(valueNode.Value, fieldNode.FieldKey);
-            string text = obj.ToString();
-            Analyzer analyzer = this.GetAnalyzer(fieldNode.FieldKey);
-            Query query;
-            if (text.Length > 0 && text != "*")
-            {
-                var terms = this.GetTermsWithPositions(fieldNode.FieldKey, text);
-                mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(fieldNode.FieldKey, ComparisonType.Contains, analyzer));
-                if (terms.Count > 1)
-                {
-                    IEnumerable<SpanSubQuery> source = from term in terms
-                                                       group term by term.Value into g
-                                                       select new SpanSubQuery
-                                                       {
-                                                           IsWildcard = g.Key == terms.Last<KeyValuePair<string, int>>().Value || g.Key == terms.First<KeyValuePair<string, int>>().Value,
-                                                           Position = g.Key,
-                                                           CreatorMethod = delegate
-                                                           {
-                                                               if (g.Key == terms.First<KeyValuePair<string, int>>().Value)
-                                                               {
-                                                                   return this.GetSpanQuery(fieldNode.FieldKey, from pair in g
-                                                                                                                select "*" + pair.Key, true);
-                                                               }
-                                                               if (g.Key == terms.Last<KeyValuePair<string, int>>().Value)
-                                                               {
-                                                                   return this.GetSpanQuery(fieldNode.FieldKey, from pair in g
-                                                                                                                select pair.Key + "*", true);
-                                                               }
-                                                               return this.GetSpanQuery(fieldNode.FieldKey, from pair in g
-                                                                                                            select pair.Key, false);
-                                                           }
-                                                       };
-                    query = this.BuildSpanQuery(source.ToArray<SpanSubQuery>());
-                }
-                else if (terms.Count == 1)
-                {
-                    query = new TermQuery(new Term(fieldNode.FieldKey, "/.*" + terms[0].Key + ".*/"));
-                }
-                else
-                {
-                    query = new TermQuery(new Term(fieldNode.FieldKey, "/.*" + text.ToLowerInvariant() + ".*/"));
-                }
-            }
-            else
-            {
-                query = new TermQuery(new Term(fieldNode.FieldKey, "*"));
-            }
+             FieldNode fieldNode = QueryHelper.GetFieldNode(node);
+            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
+            var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.Contains);
             query.Boost = node.Boost;
             return query;
         }
@@ -581,22 +535,7 @@ namespace Slalom.ContentSearch.Linq.Azure
         {
             FieldNode fieldNode = QueryHelper.GetFieldNode(node);
             string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
-            var query = new TermQuery(new Term(fieldNode.FieldKey, "/.*" + queryText + "/"));
-
-            //mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(fieldNode.FieldKey, ComparisonType.EndsWith, analyzer));
-            //Query query = terms.Count <= 1 ? (terms.Count != 1 ? (Query)new MatchNoDocsQuery() : (Query)new SpanLastQuery(new SpanTermQuery(new Term(fieldNode.FieldKey, "/.*" + terms[0].Key + "/")), analyzer)) : (Query)this.BuildSpanQuery(Enumerable.ToArray(Enumerable.Select(Enumerable.GroupBy(terms, term => term.Value), (g => new SpanSubQuery()
-            //{
-            //    IsWildcard = g.Key == Enumerable.First<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value,
-            //    Position = g.Key,
-            //    CreatorMethod = (Func<SpanQuery>)(() =>
-            //    {
-            //        if (g.Key == Enumerable.First<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value)
-            //            return this.GetSpanQuery(fieldNode.FieldKey, Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => "*" + pair.Key)), true);
-            //        if (g.Key == Enumerable.Last<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value)
-            //            return (SpanQuery)new SpanLastQuery((SpanQuery)new SpanTermQuery(new Term(fieldNode.FieldKey, Enumerable.First<string>(Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => pair.Key))))), analyzer);
-            //        return this.GetSpanQuery(fieldNode.FieldKey, Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => pair.Key)), true);
-            //    })
-            //}))));
+            var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.EndsWith);
             query.Boost = node.Boost;
             return query;
         }
@@ -799,22 +738,7 @@ namespace Slalom.ContentSearch.Linq.Azure
         {
             FieldNode fieldNode = QueryHelper.GetFieldNode(node);
             string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
-            var query = new TermQuery(new Term(fieldNode.FieldKey, "/" + queryText + ".*/"));
-
-            //mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(fieldNode.FieldKey, ComparisonType.StartsWith, analyzer));
-            //Query query = terms.Count <= 1 ? (terms.Count != 1 ? (Query)new SpanFirstQuery((SpanQuery)new SpanWildcardQuery(new Term(fieldNode.FieldKey, queryText.ToLowerInvariant() + "*")), 1) : (Query)new SpanFirstQuery((SpanQuery)new SpanWildcardQuery(new Term(fieldNode.FieldKey, terms[0].Key + "*")), terms[0].Value + 1)) : (Query)this.BuildSpanQuery(Enumerable.ToArray<SpanSubQuery>(Enumerable.Select<IGrouping<int, KeyValuePair<string, int>>, SpanSubQuery>(Enumerable.GroupBy<KeyValuePair<string, int>, int>((IEnumerable<KeyValuePair<string, int>>)terms, (Func<KeyValuePair<string, int>, int>)(term => term.Value)), (Func<IGrouping<int, KeyValuePair<string, int>>, SpanSubQuery>)(g => new SpanSubQuery()
-            //{
-            //    IsWildcard = g.Key == Enumerable.Last<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value,
-            //    Position = g.Key,
-            //    CreatorMethod = (Func<SpanQuery>)(() =>
-            //    {
-            //        if (g.Key == Enumerable.First<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value)
-            //            return (SpanQuery)new SpanFirstQuery((SpanQuery)new SpanTermQuery(new Term(fieldNode.FieldKey, Enumerable.First<string>(Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => pair.Key))))), g.Key + 1);
-            //        if (g.Key == Enumerable.Last<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)terms).Value)
-            //            return this.GetSpanQuery(fieldNode.FieldKey, Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => pair.Key + "*")), true);
-            //        return this.GetSpanQuery(fieldNode.FieldKey, Enumerable.Select<KeyValuePair<string, int>, string>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, string>)(pair => pair.Key)), true);
-            //    })
-            //}))));
+            var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.StartsWith);
             query.Boost = node.Boost;
             return query;
         }
@@ -840,7 +764,7 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected Query VisitMatches(MatchesNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
         {
-            RegexQuery regexQuery = new RegexQuery(new Term(QueryHelper.GetFieldNode((BinaryNode)node).FieldKey, LinqStringExtensions.ToStringOrEmpty(QueryHelper.GetValueNode<string>((BinaryNode)node).Value)));
+            Contrib.Regex.RegexQuery regexQuery = new Contrib.Regex.RegexQuery(new Term(QueryHelper.GetFieldNode((BinaryNode)node).FieldKey, LinqStringExtensions.ToStringOrEmpty(QueryHelper.GetValueNode<string>((BinaryNode)node).Value)));
             if (node.RegexOptions != null)
             {
                 if (!TypeExtensions.IsAssignableTo(((ConstantNode)node.RegexOptions).Type, typeof(RegexOptions)))

@@ -33,7 +33,10 @@ namespace Website
                     predicate = predicate.And(predicate2);
 
                     var predicate3 = PredicateBuilder.True<AzureSearchResultItem>();
-                    predicate3 = predicate3.And(f => f.Name != "Windows Phone Landscape");
+                    //predicate3 = predicate3.And(f => f.Name != "Windows Phone Landscape");
+                    //predicate3 = predicate3.And(f => f.Name.StartsWith("Page"));
+                    //predicate3 = predicate3.And(f => f.Name.EndsWith("Found"));
+                    predicate3 = predicate3.And(f => f.Name.Contains("Not"));
                     predicate = predicate.And(predicate3);
 
                     var queryable = context.GetQueryable<AzureSearchResultItem>();
