@@ -1,5 +1,4 @@
 ﻿using Azure.ContentSearch.Linq.Lucene;
-using Contrib.Regex;
 using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Tokenattributes;
 using Lucene.Net.Index;
@@ -17,7 +16,6 @@ using Sitecore.ContentSearch.Linq.Nodes;
 using Sitecore.ContentSearch.Linq.Parsing;
 using Slalom.ContentSearch.Linq.Azure.Queries;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -36,7 +34,7 @@ namespace Slalom.ContentSearch.Linq.Azure
             Parameters = parameters;
             this.ValueFormatter = parameters.ValueFormatter;
 
-            this.queryParser = new QueryParser(global::Lucene.Net.Util.Version.LUCENE_30, (string)null, null)
+            this.queryParser = new QueryParser(global::Lucene.Net.Util.Version.LUCENE_30, null, null)
             {
                 AllowLeadingWildcard = true,
                 EnablePositionIncrements = true
@@ -56,34 +54,35 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         public override AzureQuery MapQuery(IndexQuery query)
         {
-            var mappingState = new AzureQueryMapper.AzureQueryMapperState((IEnumerable<IExecutionContext>)this.Parameters.ExecutionContexts);
+            var mappingState = new AzureQueryMapperState(this.Parameters.ExecutionContexts);
             return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQuery, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
         }
-        protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapper.AzureQueryMapperState mappingState)
+
+        protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapperState mappingState)
         {
             Analyzer analyzer;
-            List<string> fieldTerms = this.GetFieldTerms(field, queryText, out analyzer);
+            var fieldTerms = this.GetFieldTerms(field, queryText, out analyzer);
             mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(field, ComparisonType.Equal, analyzer));
             if (fieldTerms.Count == 0)
-                return (Query)new MatchNoDocsQuery();
+                return new MatchNoDocsQuery();
             if (fieldTerms.Count == 1)
-                return (Query)new TermQuery(new Term(field, fieldTerms[0]));
-            return (Query)this.GetPhraseQuery(field, fieldTerms);
+                return new TermQuery(new Term(field, fieldTerms[0]));
+            return this.GetPhraseQuery(field, fieldTerms);
         }
 
         protected virtual List<string> GetFieldTerms(string field, string queryText, out Analyzer analyzer)
         {
-            IAzureSearchFieldConfiguration fieldConfiguration = this.Parameters.GetFieldConfiguration(field);
+            var fieldConfiguration = this.Parameters.GetFieldConfiguration(field);
             analyzer = new KeywordAnalyzer();
             return this.GetFieldTerms(field, queryText, analyzer);
         }
 
         protected virtual List<string> GetFieldTerms(string field, string queryText, Analyzer analyzer)
         {
-            using (TokenStream tokenStream = analyzer.TokenStream(field, (TextReader)new StringReader(queryText)))
+            using (var tokenStream = analyzer.TokenStream(field, new StringReader(queryText)))
             {
-                ITermAttribute termAttribute = tokenStream.AddAttribute<ITermAttribute>();
-                List<string> list = new List<string>();
+                var termAttribute = tokenStream.AddAttribute<ITermAttribute>();
+                var list = new List<string>();
                 while (tokenStream.IncrementToken())
                 {
                     string term = termAttribute.Term;
@@ -96,7 +95,7 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected virtual PhraseQuery GetPhraseQuery(string field, List<string> terms)
         {
-            PhraseQuery phraseQuery = new PhraseQuery();
+            var phraseQuery = new PhraseQuery();
             int position = 0;
             foreach (string txt in terms)
             {
@@ -110,14 +109,14 @@ namespace Slalom.ContentSearch.Linq.Azure
         {
             using (TokenStream tokenStream = this.GetAnalyzer(field).TokenStream(field, (TextReader)new StringReader(queryText)))
             {
-                ITermAttribute termAttribute = tokenStream.AddAttribute<ITermAttribute>();
-                IPositionIncrementAttribute incrementAttribute = tokenStream.AddAttribute<IPositionIncrementAttribute>();
-                List<KeyValuePair<string, int>> list = new List<KeyValuePair<string, int>>();
+                var termAttribute = tokenStream.AddAttribute<ITermAttribute>();
+                var incrementAttribute = tokenStream.AddAttribute<IPositionIncrementAttribute>();
+                var list = new List<KeyValuePair<string, int>>();
                 int num = 0;
                 bool flag = true;
                 while (tokenStream.IncrementToken())
                 {
-                    string term = termAttribute.Term;
+                    var term = termAttribute.Term;
                     if (flag)
                     {
                         num = incrementAttribute.PositionIncrement - 1;
@@ -134,28 +133,28 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected virtual Analyzer GetAnalyzer(string fieldName)
         {
-            IAzureSearchFieldConfiguration fieldConfiguration = this.Parameters.GetFieldConfiguration(fieldName);
+            var fieldConfiguration = this.Parameters.GetFieldConfiguration(fieldName);
             return new KeywordAnalyzer();
         }
 
-        protected virtual Query GetEqualsQuery(string field, string queryText, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query GetEqualsQuery(string field, string queryText, AzureQueryMapperState mappingState)
         {
-            IAzureSearchFieldConfiguration fieldConfiguration = this.Parameters.GetFieldConfiguration(field);
-            Analyzer analyzer = this.GetAnalyzer(field);
+            var fieldConfiguration = this.Parameters.GetFieldConfiguration(field);
+            var analyzer = this.GetAnalyzer(field);
             mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(field, ComparisonType.Equal, analyzer));
             //if (fieldConfiguration != null && (fieldConfiguration.IndexType == Field.Index.NOT_ANALYZED || fieldConfiguration.IndexType == Field.Index.NOT_ANALYZED_NO_NORMS))
             //    return (Query)new TermQuery(new Term(field, queryText));
 
             var termsWithPositions = this.GetTermsWithPositions(field, queryText);
             if (termsWithPositions.Count == 0)
-                return (Query)new MatchNoDocsQuery();
+                return new MatchNoDocsQuery();
             if (termsWithPositions.Count == 1)
-                return (Query)new TermQuery(new Term(field, termsWithPositions[0].Key));
-            MultiPhraseQuery multiPhraseQuery = new MultiPhraseQuery();
-            foreach (var fAnonymousType0 in Enumerable.Select(Enumerable.GroupBy<KeyValuePair<string, int>, int>((IEnumerable<KeyValuePair<string, int>>)termsWithPositions, (Func<KeyValuePair<string, int>, int>)(term => term.Value)), g => new
+                return new TermQuery(new Term(field, termsWithPositions[0].Key));
+            var multiPhraseQuery = new MultiPhraseQuery();
+            foreach (var fAnonymousType0 in Enumerable.Select(Enumerable.GroupBy(termsWithPositions, (term => term.Value)), g => new
             {
                 Position = g.Key,
-                Terms = Enumerable.ToArray<Term>(Enumerable.Select<KeyValuePair<string, int>, Term>((IEnumerable<KeyValuePair<string, int>>)g, (Func<KeyValuePair<string, int>, Term>)(pair => new Term(field, pair.Key))))
+                Terms = Enumerable.ToArray(Enumerable.Select(g, (pair => new Term(field, pair.Key))))
             }))
                 multiPhraseQuery.Add(fAnonymousType0.Terms, fAnonymousType0.Position);
             return multiPhraseQuery;
@@ -163,124 +162,124 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected virtual void StripAll(AllNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new AllMethod());
+            methods.Add(new AllMethod());
         }
 
         protected virtual void StripAny(AnyNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new AnyMethod());
+            methods.Add(new AnyMethod());
         }
 
         protected virtual void StripCast(CastNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new CastMethod(node.TargetType));
+            methods.Add(new CastMethod(node.TargetType));
         }
 
         protected virtual void StripCount(CountNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new CountMethod(node.IsLongCount));
+            methods.Add(new CountMethod(node.IsLongCount));
         }
 
         protected virtual void StripElementAt(ElementAtNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new ElementAtMethod(node.Index, node.AllowDefaultValue));
+            methods.Add(new ElementAtMethod(node.Index, node.AllowDefaultValue));
         }
 
         protected virtual void StripFirst(FirstNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new FirstMethod(node.AllowDefaultValue));
+            methods.Add(new FirstMethod(node.AllowDefaultValue));
         }
 
         protected virtual void StripMax(MaxNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new MaxMethod(node.AllowDefaultValue));
+            methods.Add(new MaxMethod(node.AllowDefaultValue));
         }
 
         protected virtual void StripMin(MinNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new MinMethod(node.AllowDefaultValue));
+            methods.Add(new MinMethod(node.AllowDefaultValue));
         }
 
         protected virtual void StripLast(LastNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new LastMethod(node.AllowDefaultValue));
+            methods.Add(new LastMethod(node.AllowDefaultValue));
         }
 
-        protected virtual void StripOrderBy(OrderByNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual void StripOrderBy(OrderByNode node, AzureQueryMapperState mappingState)
         {
             Query query;
-            if (this.ProcessAsVirtualField(node.Field, (object)node.SortDirection, 1f, ComparisonType.OrderBy, mappingState, out query))
+            if (this.ProcessAsVirtualField(node.Field, node.SortDirection, 1f, ComparisonType.OrderBy, mappingState, out query))
                 return;
-            mappingState.AdditionalQueryMethods.Add((QueryMethod)new OrderByMethod(node.Field, node.FieldType, node.SortDirection));
+            mappingState.AdditionalQueryMethods.Add(new OrderByMethod(node.Field, node.FieldType, node.SortDirection));
         }
 
         protected virtual void StripSingle(SingleNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new SingleMethod(node.AllowDefaultValue));
+            methods.Add(new SingleMethod(node.AllowDefaultValue));
         }
 
         protected virtual void StripSkip(SkipNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new SkipMethod(node.Count));
+            methods.Add(new SkipMethod(node.Count));
         }
 
         protected virtual void StripTake(TakeNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new TakeMethod(node.Count));
+            methods.Add(new TakeMethod(node.Count));
         }
 
         protected virtual void StripSelect(SelectNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new SelectMethod(node.Lambda, node.FieldNames));
+            methods.Add(new SelectMethod(node.Lambda, node.FieldNames));
         }
 
         protected virtual void StripGetResults(GetResultsNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new GetResultsMethod(node.Options));
+            methods.Add(new GetResultsMethod(node.Options));
         }
 
         protected virtual void StripGetFacets(GetFacetsNode node, List<QueryMethod> methods)
         {
-            methods.Add((QueryMethod)new GetFacetsMethod());
+            methods.Add(new GetFacetsMethod());
         }
 
-        protected virtual void StripFacetOn(FacetOnNode node, AzureQueryMapper.AzureQueryMapperState state)
+        protected virtual void StripFacetOn(FacetOnNode node, AzureQueryMapperState state)
         {
             this.ProcessAsVirtualField(node.Field, state);
-            state.FacetQueries.Add(new FacetQuery(node.Field, (IEnumerable<string>)new string[1]
+            state.FacetQueries.Add(new FacetQuery(node.Field, new string[1]
             {
-        node.Field
+                node.Field
             }, new int?(node.MinimumNumberOfDocuments), node.FilterValues));
         }
 
-        protected virtual void StripFacetPivotOn(FacetPivotOnNode node, AzureQueryMapper.AzureQueryMapperState state)
+        protected virtual void StripFacetPivotOn(FacetPivotOnNode node, AzureQueryMapperState state)
         {
             foreach (string fieldName in node.Fields)
                 this.ProcessAsVirtualField(fieldName, state);
-            state.FacetQueries.Add(new FacetQuery((string)null, (IEnumerable<string>)node.Fields, new int?(node.MinimumNumberOfDocuments), node.FilterValues));
+            state.FacetQueries.Add(new FacetQuery(null, node.Fields, new int?(node.MinimumNumberOfDocuments), node.FilterValues));
         }
 
-        protected virtual void StripJoin(JoinNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual void StripJoin(JoinNode node, AzureQueryMapperState mappingState)
         {
-            mappingState.AdditionalQueryMethods.Add((QueryMethod)new JoinMethod((IEnumerable)node.GetOuterQueryable(), (IEnumerable)node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression, node.SelectQuery, node.EqualityComparer));
+            mappingState.AdditionalQueryMethods.Add(new JoinMethod(node.GetOuterQueryable(), node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression, node.SelectQuery, node.EqualityComparer));
         }
 
-        protected virtual void StripGroupJoin(GroupJoinNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual void StripGroupJoin(GroupJoinNode node, AzureQueryMapperState mappingState)
         {
-            mappingState.AdditionalQueryMethods.Add((QueryMethod)new GroupJoinMethod((IEnumerable)node.GetOuterQueryable(), (IEnumerable)node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression, node.SelectQuery, node.EqualityComparer));
+            mappingState.AdditionalQueryMethods.Add(new GroupJoinMethod(node.GetOuterQueryable(), node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression, node.SelectQuery, node.EqualityComparer));
         }
 
-        protected virtual void StripSelfJoin(SelfJoinNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual void StripSelfJoin(SelfJoinNode node, AzureQueryMapperState mappingState)
         {
-            mappingState.AdditionalQueryMethods.Add((QueryMethod)new SelfJoinMethod((IEnumerable)node.GetOuterQueryable(), (IEnumerable)node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression));
+            mappingState.AdditionalQueryMethods.Add(new SelfJoinMethod(node.GetOuterQueryable(), node.GetInnerQueryable(), node.OuterKey, node.InnerKey, node.OuterKeyExpression, node.InnerKeyExpression));
         }
 
-        protected virtual void StripSelectMany(SelectManyNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual void StripSelectMany(SelectManyNode node, AzureQueryMapperState mappingState)
         {
-            mappingState.AdditionalQueryMethods.Add((QueryMethod)new SelectManyMethod((IEnumerable)node.GetSourceQueryable(), node.CollectionSelectorExpression, node.ResultSelectorExpression));
+            mappingState.AdditionalQueryMethods.Add(new SelectManyMethod(node.GetSourceQueryable(), node.CollectionSelectorExpression, node.ResultSelectorExpression));
         }
 
-        protected virtual Query Visit(QueryNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query Visit(QueryNode node, AzureQueryMapperState mappingState)
         {
             switch (node.NodeType)
             {
@@ -364,17 +363,17 @@ namespace Slalom.ContentSearch.Linq.Azure
                     if (mappingState.FilterQuery == null)
                         mappingState.FilterQuery = this.VisitFilter((FilterNode)node, mappingState);
                     else
-                        mappingState.FilterQuery = (Query)new BooleanQuery()
-            {
-              {
-                mappingState.FilterQuery,
-                Occur.MUST
-              },
-              {
-                this.VisitFilter((FilterNode) node, mappingState),
-                Occur.MUST
-              }
-            };
+                        mappingState.FilterQuery = new BooleanQuery()
+                        {
+                          {
+                            mappingState.FilterQuery,
+                            Occur.MUST
+                          },
+                          {
+                            this.VisitFilter((FilterNode) node, mappingState),
+                            Occur.MUST
+                          }
+                        };
                     return this.Visit(((FilterNode)node).SourceNode, mappingState);
                 case QueryNodeType.GetResults:
                     this.StripGetResults((GetResultsNode)node, mappingState.AdditionalQueryMethods);
@@ -394,51 +393,53 @@ namespace Slalom.ContentSearch.Linq.Azure
                     return this.VisitLike((LikeNode)node, mappingState);
                 case QueryNodeType.Join:
                     this.StripJoin((JoinNode)node, mappingState);
-                    return (Query)null;
+                    return null;
                 case QueryNodeType.GroupJoin:
                     this.StripGroupJoin((GroupJoinNode)node, mappingState);
-                    return (Query)null;
+                    return null;
                 case QueryNodeType.SelfJoin:
                     this.StripSelfJoin((SelfJoinNode)node, mappingState);
-                    return (Query)null;
+                    return null;
                 case QueryNodeType.SelectMany:
                     this.StripSelectMany((SelectManyNode)node, mappingState);
-                    return (Query)null;
+                    return null;
                 default:
                     throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
             }
         }
 
-        protected virtual Query VisitField(FieldNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitField(FieldNode node, AzureQueryMapperState mappingState)
         {
             if (node.FieldType != typeof(bool))
                 throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
-            object obj = this.ValueFormatter.FormatValueForIndexStorage((object)true, node.FieldKey);
+            var obj = this.ValueFormatter.FormatValueForIndexStorage((object)true, node.FieldKey);
             return this.GetFieldQuery(node.FieldKey, LinqStringExtensions.ToStringOrEmpty(obj), mappingState);
         }
 
-        protected virtual Query VisitAnd(AndNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitAnd(AndNode node, AzureQueryMapperState mappingState)
         {
-            BooleanQuery booleanQuery1 = new BooleanQuery();
-            Query query1 = this.Visit(node.LeftNode, mappingState);
-            Query query2 = this.Visit(node.RightNode, mappingState);
-            BooleanQuery booleanQuery2 = query1 as BooleanQuery;
+            var booleanQuery1 = new BooleanQuery();
+            var query1 = this.Visit(node.LeftNode, mappingState);
+            var query2 = this.Visit(node.RightNode, mappingState);
+            var booleanQuery2 = query1 as BooleanQuery;
             if (booleanQuery2 != null && node.LeftNode.NodeType != QueryNodeType.Boost && booleanQuery2.Clauses.TrueForAll((Predicate<BooleanClause>)(clause => clause.Occur == Occur.MUST)))
             {
                 foreach (Query query3 in Enumerable.Select<BooleanClause, Query>((IEnumerable<BooleanClause>)booleanQuery2.Clauses, (Func<BooleanClause, Query>)(o => o.Query)))
                     booleanQuery1.Add(query3, Occur.MUST);
             }
             else
+            {
                 booleanQuery1.Add(query1, Occur.MUST);
+            }
             booleanQuery1.Add(query2, Occur.MUST);
-            return (Query)booleanQuery1;
+            return booleanQuery1;
         }
 
-        protected virtual Query VisitBetween(BetweenNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitBetween(BetweenNode node, AzureQueryMapperState mappingState)
         {
-            bool includeLower = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Lower;
-            bool includeUpper = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Upper;
-            Query query = this.VisitBetween(node.Field, node.From, node.To, includeLower, includeUpper);
+            var includeLower = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Lower;
+            var includeUpper = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Upper;
+            var query = this.VisitBetween(node.Field, node.From, node.To, includeLower, includeUpper);
             query.Boost = node.Boost;
             return query;
         }
@@ -455,10 +456,10 @@ namespace Slalom.ContentSearch.Linq.Azure
             }, this, true);
         }
 
-        protected virtual Query VisitContains(ContainsNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitContains(ContainsNode node, AzureQueryMapperState mappingState)
         {
-             FieldNode fieldNode = QueryHelper.GetFieldNode(node);
-            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
             var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.Contains);
             query.Boost = node.Boost;
             return query;
@@ -466,24 +467,24 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         private SpanQuery BuildSpanQuery(SpanSubQuery[] subqueries)
         {
-            SpanQuery spanQuery1 = (SpanQuery)null;
-            List<SpanQuery> list = new List<SpanQuery>();
-            SpanSubQuery[] spanSubQueryArray = subqueries;
+            SpanQuery spanQuery1 = null;
+            var list = new List<SpanQuery>();
+            var spanSubQueryArray = subqueries;
             for (int index = 0; index < spanSubQueryArray.Length; ++index)
             {
                 int slop = index > 0 ? spanSubQueryArray[index].Position - spanSubQueryArray[index - 1].Position - 1 : 0;
-                SpanQuery spanQuery2 = spanSubQueryArray[index].CreatorMethod();
+                var spanQuery2 = spanSubQueryArray[index].CreatorMethod();
                 if (slop > 0)
                 {
-                    SpanNearQuery spanNearQuery1 = (SpanNearQuery)null;
+                    SpanNearQuery spanNearQuery1 = null;
                     if (list.Count > 0)
                         spanNearQuery1 = new SpanNearQuery(list.ToArray(), 0, true);
                     if (spanQuery1 == null)
                     {
-                        spanQuery1 = (SpanQuery)new SpanNearQuery(new SpanQuery[2]
+                        spanQuery1 = new SpanNearQuery(new SpanQuery[2]
                         {
-              (SpanQuery) spanNearQuery1,
-              spanQuery2
+                          spanNearQuery1,
+                          spanQuery2
                         }, slop, true);
                     }
                     else
@@ -492,17 +493,17 @@ namespace Slalom.ContentSearch.Linq.Azure
                         if (spanNearQuery1 == null)
                             spanNearQuery2 = new SpanNearQuery(new SpanQuery[2]
                             {
-                spanQuery1,
-                spanQuery2
+                                spanQuery1,
+                                spanQuery2
                             }, slop, true);
                         else
                             spanNearQuery2 = new SpanNearQuery(new SpanQuery[3]
                             {
-                spanQuery1,
-                (SpanQuery) spanNearQuery1,
-                spanQuery2
+                                spanQuery1,
+                                spanNearQuery1,
+                                spanQuery2
                             }, slop, true);
-                        spanQuery1 = (SpanQuery)spanNearQuery2;
+                        spanQuery1 = spanNearQuery2;
                     }
                     list = new List<SpanQuery>();
                 }
@@ -510,55 +511,55 @@ namespace Slalom.ContentSearch.Linq.Azure
                     list.Add(spanQuery2);
             }
             if (spanQuery1 == null && list.Count > 0)
-                spanQuery1 = (SpanQuery)new SpanNearQuery(list.ToArray(), 0, true);
+                spanQuery1 = new SpanNearQuery(list.ToArray(), 0, true);
             return spanQuery1;
         }
 
         private SpanQuery GetSpanQuery(string fieldName, IEnumerable<string> terms, bool isWildcard)
         {
             if (isWildcard || Enumerable.Count<string>(terms) > 1)
-                return (SpanQuery)this.GetSpanWildcardQuery(fieldName, terms);
-            return (SpanQuery)new SpanTermQuery(new Term(fieldName, Enumerable.First<string>(terms)));
+                return this.GetSpanWildcardQuery(fieldName, terms);
+            return new SpanTermQuery(new Term(fieldName, Enumerable.First(terms)));
         }
 
         private SpanWildcardQuery GetSpanWildcardQuery(string fieldName, IEnumerable<string> terms)
         {
-            return new SpanWildcardQuery(Enumerable.Select<string, Term>(terms, (Func<string, Term>)(z => new Term(fieldName, z))));
+            return new SpanWildcardQuery(Enumerable.Select(terms, (z => new Term(fieldName, z))));
         }
 
         private SpanNearQuery GetSpanNearQuery(string fieldName, IEnumerable<string> terms, int slop = 0, bool direction = true)
         {
-            return new SpanNearQuery(Enumerable.ToArray<SpanQuery>(Enumerable.Cast<SpanQuery>((IEnumerable)Enumerable.Select<string, SpanTermQuery>(terms, (Func<string, SpanTermQuery>)(z => new SpanTermQuery(new Term(fieldName, z)))))), slop, direction);
+            return new SpanNearQuery(Enumerable.ToArray(Enumerable.Cast<SpanQuery>(Enumerable.Select(terms, (z => new SpanTermQuery(new Term(fieldName, z)))))), slop, direction);
         }
 
-        protected virtual Query VisitEndsWith(EndsWithNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitEndsWith(EndsWithNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode(node);
-            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
             var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.EndsWith);
             query.Boost = node.Boost;
             return query;
         }
 
-        protected virtual Query VisitEqual(EqualNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitEqual(EqualNode node, AzureQueryMapperState mappingState)
         {
             if (node.LeftNode is ConstantNode && node.RightNode is ConstantNode)
-                return (Query)new BooleanQuery()
-        {
-          {
-            (Query) new MatchAllDocsQuery(),
-            ((ConstantNode) node.LeftNode).Value.Equals(((ConstantNode) node.RightNode).Value) ? Occur.MUST : Occur.MUST_NOT
-          }
-        };
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            ConstantNode valueNode = !(fieldNode.FieldType != typeof(string)) ? QueryHelper.GetValueNode<object>((BinaryNode)node) : QueryHelper.GetValueNode((BinaryNode)node, fieldNode.FieldType);
+                return new BooleanQuery()
+                {
+                  {
+                    new MatchAllDocsQuery(),
+                    ((ConstantNode) node.LeftNode).Value.Equals(((ConstantNode) node.RightNode).Value) ? Occur.MUST : Occur.MUST_NOT
+                  }
+                };
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = !(fieldNode.FieldType != typeof(string)) ? QueryHelper.GetValueNode<object>(node) : QueryHelper.GetValueNode(node, fieldNode.FieldType);
             Query query;
             if (this.ProcessAsVirtualField(fieldNode, valueNode, node.Boost, ComparisonType.Equal, mappingState, out query))
                 return query;
-            string fieldKey = fieldNode.FieldKey;
-            object obj = valueNode.Value;
-            float boost = node.Boost;
-            AbstractSearchFieldConfiguration fieldConfiguration = this.Parameters.FieldMap != null ? this.Parameters.FieldMap.GetFieldConfiguration(fieldKey) : (AbstractSearchFieldConfiguration)null;
+            var fieldKey = fieldNode.FieldKey;
+            var obj = valueNode.Value;
+            var boost = node.Boost;
+            var fieldConfiguration = this.Parameters.FieldMap != null ? this.Parameters.FieldMap.GetFieldConfiguration(fieldKey) : (AbstractSearchFieldConfiguration)null;
             if (fieldConfiguration != null)
                 obj = fieldConfiguration.FormatForWriting(obj);
             if (obj == null)
@@ -566,9 +567,9 @@ namespace Slalom.ContentSearch.Linq.Azure
             return this.VisitEqual(fieldKey, obj, boost, mappingState);
         }
 
-        protected virtual Query VisitEqual(string fieldName, object fieldValue, float fieldBoost, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitEqual(string fieldName, object fieldValue, float fieldBoost, AzureQueryMapperState mappingState)
         {
-            Query query = this.rangeQueryBuilder.BuildRangeQuery(new RangeQueryOptions()
+            var query = this.rangeQueryBuilder.BuildRangeQuery(new RangeQueryOptions()
             {
                 FieldName = fieldName,
                 Boost = fieldBoost,
@@ -579,8 +580,8 @@ namespace Slalom.ContentSearch.Linq.Azure
             }, this, false);
             if (query != null)
                 return query;
-            object obj = this.ValueFormatter.FormatValueForIndexStorage(fieldValue, fieldName);
-            AbstractSearchFieldConfiguration fieldConfiguration = this.Parameters.FieldMap != null ? this.Parameters.FieldMap.GetFieldConfiguration(fieldName) : (AbstractSearchFieldConfiguration)null;
+            var obj = this.ValueFormatter.FormatValueForIndexStorage(fieldValue, fieldName);
+            var fieldConfiguration = this.Parameters.FieldMap != null ? this.Parameters.FieldMap.GetFieldConfiguration(fieldName) : null;
             if (fieldConfiguration != null)
             {
                 if (obj as string == string.Empty && fieldConfiguration.Attributes.ContainsKey("emptyString"))
@@ -596,15 +597,15 @@ namespace Slalom.ContentSearch.Linq.Azure
             {
                 val = "\"" + val + "\"";
             }
-            Query equalsQuery = this.GetEqualsQuery(fieldName, val, mappingState);
+            var equalsQuery = this.GetEqualsQuery(fieldName, val, mappingState);
             equalsQuery.Boost = fieldBoost;
             return equalsQuery;
         }
 
-        protected virtual Query VisitLessThanOrEqual(LessThanOrEqualNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitLessThanOrEqual(LessThanOrEqualNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            ConstantNode valueNode = QueryHelper.GetValueNode((BinaryNode)node, fieldNode.FieldType);
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
             Query query;
             if (this.ProcessAsVirtualField(fieldNode, valueNode, node.Boost, ComparisonType.LessThanOrEqual, mappingState, out query))
                 return query;
@@ -617,17 +618,17 @@ namespace Slalom.ContentSearch.Linq.Azure
             {
                 FieldName = fieldName,
                 Boost = fieldBoost,
-                FieldFromValue = (object)null,
+                FieldFromValue = null,
                 FieldToValue = fieldValue,
                 IncludeLower = true,
                 IncludeUpper = true
             }, this, true);
         }
 
-        protected virtual Query VisitLessThan(LessThanNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitLessThan(LessThanNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            ConstantNode valueNode = QueryHelper.GetValueNode((BinaryNode)node, fieldNode.FieldType);
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
             Query query;
             if (this.ProcessAsVirtualField(fieldNode, valueNode, node.Boost, ComparisonType.LessThan, mappingState, out query))
                 return query;
@@ -647,10 +648,10 @@ namespace Slalom.ContentSearch.Linq.Azure
             }, this, true);
         }
 
-        protected virtual Query VisitGreaterThanOrEqual(GreaterThanOrEqualNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitGreaterThanOrEqual(GreaterThanOrEqualNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            ConstantNode valueNode = QueryHelper.GetValueNode((BinaryNode)node, fieldNode.FieldType);
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
             Query query;
             if (this.ProcessAsVirtualField(fieldNode, valueNode, node.Boost, ComparisonType.GreaterThanOrEqual, mappingState, out query))
                 return query;
@@ -670,10 +671,10 @@ namespace Slalom.ContentSearch.Linq.Azure
             }, this, true);
         }
 
-        protected virtual Query VisitGreaterThan(GreaterThanNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitGreaterThan(GreaterThanNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            ConstantNode valueNode = QueryHelper.GetValueNode((BinaryNode)node, fieldNode.FieldType);
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
             Query query;
             if (this.ProcessAsVirtualField(fieldNode, valueNode, node.Boost, ComparisonType.GreaterThan, mappingState, out query))
                 return query;
@@ -694,60 +695,60 @@ namespace Slalom.ContentSearch.Linq.Azure
             //}, this, true);
         }
 
-        protected virtual Query VisitMatchAll(MatchAllNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitMatchAll(MatchAllNode node, AzureQueryMapperState mappingState)
         {
-            return (Query)new MatchAllDocsQuery();
+            return new MatchAllDocsQuery();
         }
 
-        protected virtual Query VisitMatchNone(MatchNoneNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitMatchNone(MatchNoneNode node, AzureQueryMapperState mappingState)
         {
-            return (Query)new BooleanQuery()
-      {
-        {
-          (Query) new MatchAllDocsQuery(),
-          Occur.MUST_NOT
-        }
-      };
+            return new BooleanQuery()
+              {
+                {
+                  new MatchAllDocsQuery(),
+                  Occur.MUST_NOT
+                }
+              };
         }
 
-        protected virtual Query VisitNot(NotNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitNot(NotNode node, AzureQueryMapperState mappingState)
         {
             var fieldNode = QueryHelper.GetFieldNode((BinaryNode)node.Operand);
-            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node.Operand).Value, fieldNode.FieldKey).ToString();
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node.Operand).Value, fieldNode.FieldKey).ToString();
             return new NotEqualQuery(fieldNode.FieldKey, queryText);
         }
 
-        protected virtual Query VisitOr(OrNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitOr(OrNode node, AzureQueryMapperState mappingState)
         {
-            BooleanQuery booleanQuery1 = new BooleanQuery();
-            Query query1 = this.Visit(node.LeftNode, mappingState);
-            Query query2 = this.Visit(node.RightNode, mappingState);
-            BooleanQuery booleanQuery2 = query1 as BooleanQuery;
-            if (booleanQuery2 != null && booleanQuery2.Clauses.TrueForAll((Predicate<BooleanClause>)(o => o.Occur == Occur.SHOULD)))
+            var booleanQuery1 = new BooleanQuery();
+            var query1 = this.Visit(node.LeftNode, mappingState);
+            var query2 = this.Visit(node.RightNode, mappingState);
+            var booleanQuery2 = query1 as BooleanQuery;
+            if (booleanQuery2 != null && booleanQuery2.Clauses.TrueForAll(o => o.Occur == Occur.SHOULD))
             {
-                foreach (Query query3 in Enumerable.Select<BooleanClause, Query>((IEnumerable<BooleanClause>)booleanQuery2.Clauses, (Func<BooleanClause, Query>)(o => o.Query)))
+                foreach (var query3 in Enumerable.Select(booleanQuery2.Clauses, (o => o.Query)))
                     booleanQuery1.Add(query3, Occur.SHOULD);
             }
             else
                 booleanQuery1.Add(query1, Occur.SHOULD);
             booleanQuery1.Add(query2, Occur.SHOULD);
-            return (Query)booleanQuery1;
+            return booleanQuery1;
         }
 
-        protected virtual Query VisitStartsWith(StartsWithNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitStartsWith(StartsWithNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode(node);
-            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
             var query = new Queries.RegexQuery(fieldNode.FieldKey, queryText, Queries.RegexQuery.RegexQueryTypes.StartsWith);
             query.Boost = node.Boost;
             return query;
         }
 
-        protected virtual Query VisitWhere(WhereNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitWhere(WhereNode node, AzureQueryMapperState mappingState)
         {
-            BooleanQuery booleanQuery = new BooleanQuery();
-            Query query1 = this.Visit(node.PredicateNode, mappingState);
-            Query query2 = this.Visit(node.SourceNode, mappingState);
+            var booleanQuery = new BooleanQuery();
+            var query1 = this.Visit(node.PredicateNode, mappingState);
+            var query2 = this.Visit(node.SourceNode, mappingState);
             if (query1 is MatchAllDocsQuery && query2 is MatchAllDocsQuery)
             {
                 booleanQuery.Add(query1, Occur.MUST);
@@ -759,100 +760,100 @@ namespace Slalom.ContentSearch.Linq.Azure
                 if (!(query2 is MatchAllDocsQuery))
                     booleanQuery.Add(query2, Occur.MUST);
             }
-            return (Query)booleanQuery;
+            return booleanQuery;
         }
 
-        protected Query VisitMatches(MatchesNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected Query VisitMatches(MatchesNode node, AzureQueryMapperState mappingState)
         {
-            Contrib.Regex.RegexQuery regexQuery = new Contrib.Regex.RegexQuery(new Term(QueryHelper.GetFieldNode((BinaryNode)node).FieldKey, LinqStringExtensions.ToStringOrEmpty(QueryHelper.GetValueNode<string>((BinaryNode)node).Value)));
+            var regexQuery = new Contrib.Regex.RegexQuery(new Term(QueryHelper.GetFieldNode(node).FieldKey, LinqStringExtensions.ToStringOrEmpty(QueryHelper.GetValueNode<string>(node).Value)));
             if (node.RegexOptions != null)
             {
                 if (!TypeExtensions.IsAssignableTo(((ConstantNode)node.RegexOptions).Type, typeof(RegexOptions)))
-                    throw new NotSupportedException(string.Format("The regex options part of the '{0}' was expected to be of type '{1}', but was of type '{2}'.", (object)node.GetType().Name, (object)typeof(RegexOptions).FullName, (object)((ConstantNode)node.RegexOptions).Type.FullName));
-                RegexOptions regexOptions = (RegexOptions)((ConstantNode)node.RegexOptions).Value;
+                    throw new NotSupportedException(string.Format("The regex options part of the '{0}' was expected to be of type '{1}', but was of type '{2}'.", node.GetType().Name, typeof(RegexOptions).FullName, ((ConstantNode)node.RegexOptions).Type.FullName));
+                var regexOptions = (RegexOptions)((ConstantNode)node.RegexOptions).Value;
                 regexQuery.RegexImplementation = new AzureRegexCapabilities(regexOptions);
             }
-          ((Query)regexQuery).Boost = node.Boost;
-            return (Query)regexQuery;
+            regexQuery.Boost = node.Boost;
+            return regexQuery;
         }
 
-        protected Query VisitWildcardMatch(WildcardMatchNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected Query VisitWildcardMatch(WildcardMatchNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node).Value, fieldNode.FieldKey).ToString();
-            IAzureSearchFieldConfiguration fieldConfiguration = this.Parameters.GetFieldConfiguration(fieldNode.FieldKey);
-            Analyzer analyzer = new KeywordAnalyzer();
-            List<string> list1 = this.GetFieldTerms(fieldNode.FieldKey, queryText, analyzer);
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString();
+            var fieldConfiguration = this.Parameters.GetFieldConfiguration(fieldNode.FieldKey);
+            var analyzer = new KeywordAnalyzer();
+            var list1 = this.GetFieldTerms(fieldNode.FieldKey, queryText, analyzer);
             mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(fieldNode.FieldKey, ComparisonType.MatchWildcard, analyzer));
             Query query;
             if (list1.Count > 1)
             {
-                List<SpanQuery> list2 = new List<SpanQuery>();
+                var list2 = new List<SpanQuery>();
                 for (int index = 0; index < list1.Count; ++index)
-                    list2.Add((SpanQuery)new SpanWildcardQuery(new Term(fieldNode.FieldKey, list1[index])));
-                query = (Query)new SpanNearQuery(list2.ToArray(), 0, true);
+                    list2.Add(new SpanWildcardQuery(new Term(fieldNode.FieldKey, list1[index])));
+                query = new SpanNearQuery(list2.ToArray(), 0, true);
             }
             else
-                query = list1.Count != 1 ? (Query)new MatchNoDocsQuery() : (Query)new WildcardQuery(new Term(fieldNode.FieldKey, list1[0]));
+                query = list1.Count != 1 ? new MatchNoDocsQuery() : (Query)new WildcardQuery(new Term(fieldNode.FieldKey, list1[0]));
             query.Boost = node.Boost;
             return query;
         }
 
-        protected Query VisitLike(LikeNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected Query VisitLike(LikeNode node, AzureQueryMapperState mappingState)
         {
-            FieldNode fieldNode = QueryHelper.GetFieldNode((BinaryNode)node);
-            string queryText = this.NormalizeValue(this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node).Value, fieldNode.FieldKey).ToString());
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var queryText = this.NormalizeValue(this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>(node).Value, fieldNode.FieldKey).ToString());
             Analyzer analyzer;
-            List<string> fieldTerms = this.GetFieldTerms(fieldNode.FieldKey, queryText, out analyzer);
+            var fieldTerms = this.GetFieldTerms(fieldNode.FieldKey, queryText, out analyzer);
             mappingState.UsedAnalyzers.Add(new Tuple<string, ComparisonType, Analyzer>(fieldNode.FieldKey, ComparisonType.Like, analyzer));
             Query query;
             if (fieldTerms.Count > 1)
             {
-                List<SpanQuery> list = new List<SpanQuery>();
+                var list = new List<SpanQuery>();
                 for (int index = 0; index < fieldTerms.Count; ++index)
-                    list.Add((SpanQuery)new SpanFuzzyQuery(new Term(fieldNode.FieldKey, fieldTerms[index]), node.MinimumSimilarity));
-                query = (Query)new SpanNearQuery(list.ToArray(), node.Slop, true);
+                    list.Add(new SpanFuzzyQuery(new Term(fieldNode.FieldKey, fieldTerms[index]), node.MinimumSimilarity));
+                query = new SpanNearQuery(list.ToArray(), node.Slop, true);
             }
             else
-                query = fieldTerms.Count != 1 ? (Query)new MatchNoDocsQuery() : (Query)new FuzzyQuery(new Term(fieldNode.FieldKey, fieldTerms[0]), node.MinimumSimilarity);
+                query = fieldTerms.Count != 1 ? new MatchNoDocsQuery() : (Query)new FuzzyQuery(new Term(fieldNode.FieldKey, fieldTerms[0]), node.MinimumSimilarity);
             query.Boost = node.Boost;
             return query;
         }
 
-        protected virtual Query VisitFilter(FilterNode node, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected virtual Query VisitFilter(FilterNode node, AzureQueryMapperState mappingState)
         {
-            AzureQueryMapper.AzureQueryMapperState mappingState1 = new AzureQueryMapper.AzureQueryMapperState((IEnumerable<IExecutionContext>)mappingState.ExecutionContexts);
+            var mappingState1 = new AzureQueryMapperState(mappingState.ExecutionContexts);
             return this.Visit(node.PredicateNode, mappingState1);
         }
 
-        protected bool ProcessAsVirtualField(string fieldName, AzureQueryMapper.AzureQueryMapperState mappingState)
+        protected bool ProcessAsVirtualField(string fieldName, AzureQueryMapperState mappingState)
         {
             if (this.Parameters.FieldQueryTranslators == null)
                 return false;
-            IFieldQueryTranslator translator = this.Parameters.FieldQueryTranslators.GetTranslator(fieldName.ToLowerInvariant());
+            var translator = this.Parameters.FieldQueryTranslators.GetTranslator(fieldName.ToLowerInvariant());
             if (translator == null)
                 return false;
             mappingState.VirtualFieldProcessors.Add(translator);
             return true;
         }
 
-        protected virtual bool ProcessAsVirtualField(FieldNode fieldNode, ConstantNode valueNode, float boost, ComparisonType comparison, AzureQueryMapper.AzureQueryMapperState mappingState, out Query query)
+        protected virtual bool ProcessAsVirtualField(FieldNode fieldNode, ConstantNode valueNode, float boost, ComparisonType comparison, AzureQueryMapperState mappingState, out Query query)
         {
             return this.ProcessAsVirtualField(fieldNode.FieldKey, valueNode.Value, boost, comparison, mappingState, out query);
         }
 
-        protected bool ProcessAsVirtualField(string fieldName, object fieldValue, float boost, ComparisonType comparison, AzureQueryMapper.AzureQueryMapperState mappingState, out Query query)
+        protected bool ProcessAsVirtualField(string fieldName, object fieldValue, float boost, ComparisonType comparison, AzureQueryMapperState mappingState, out Query query)
         {
-            query = (Query)null;
+            query = null;
             if (this.Parameters.FieldQueryTranslators == null)
                 return false;
-            IFieldQueryTranslator translator = this.Parameters.FieldQueryTranslators.GetTranslator(fieldName.ToLowerInvariant());
+            var translator = this.Parameters.FieldQueryTranslators.GetTranslator(fieldName.ToLowerInvariant());
             if (translator == null)
                 return false;
-            TranslatedFieldQuery translatedFieldQuery = translator.TranslateFieldQuery(fieldName, fieldValue, comparison, this.Parameters.FieldNameTranslator);
+            var translatedFieldQuery = translator.TranslateFieldQuery(fieldName, fieldValue, comparison, this.Parameters.FieldNameTranslator);
             if (translatedFieldQuery == null)
                 return false;
-            BooleanQuery booleanQuery = new BooleanQuery();
+            var booleanQuery = new BooleanQuery();
             if (translatedFieldQuery.FieldComparisons != null)
             {
                 foreach (Tuple<string, object, ComparisonType> tuple in translatedFieldQuery.FieldComparisons)
@@ -881,9 +882,9 @@ namespace Slalom.ContentSearch.Linq.Azure
                 }
             }
             if (translatedFieldQuery.QueryMethods != null)
-                mappingState.AdditionalQueryMethods.AddRange((IEnumerable<QueryMethod>)translatedFieldQuery.QueryMethods);
+                mappingState.AdditionalQueryMethods.AddRange(translatedFieldQuery.QueryMethods);
             mappingState.VirtualFieldProcessors.Add(translator);
-            query = (Query)booleanQuery;
+            query = booleanQuery;
             return true;
         }
 
@@ -914,7 +915,7 @@ namespace Slalom.ContentSearch.Linq.Azure
                 this.VirtualFieldProcessors = new List<IFieldQueryTranslator>();
                 this.FacetQueries = new List<FacetQuery>();
                 this.UsedAnalyzers = new List<Tuple<string, ComparisonType, Analyzer>>();
-                this.ExecutionContexts = executionContexts != null ? Enumerable.ToList<IExecutionContext>(executionContexts) : new List<IExecutionContext>();
+                this.ExecutionContexts = executionContexts != null ? Enumerable.ToList(executionContexts) : new List<IExecutionContext>();
             }
         }
     }

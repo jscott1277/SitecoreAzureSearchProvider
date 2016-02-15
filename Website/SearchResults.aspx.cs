@@ -29,14 +29,15 @@ namespace Website
 
                     var predicate2 = PredicateBuilder.True<AzureSearchResultItem>();
                     predicate2 = predicate2.And(f => f.TemplateName == "Image");
-                    predicate2 = predicate2.Or(f => f.TemplateName == "Png");
+                    predicate2 = predicate2.Or(f => f.TemplateName == "Jpeg");
                     predicate = predicate.And(predicate2);
 
+                    //Meant to enable one at a time for testing purposes
                     var predicate3 = PredicateBuilder.True<AzureSearchResultItem>();
-                    //predicate3 = predicate3.And(f => f.Name != "Windows Phone Landscape");
+                    predicate3 = predicate3.And(f => f.Name != "Windows Phone Landscape");
                     //predicate3 = predicate3.And(f => f.Name.StartsWith("Page"));
                     //predicate3 = predicate3.And(f => f.Name.EndsWith("Found"));
-                    predicate3 = predicate3.And(f => f.Name.Contains("Not"));
+                    //predicate3 = predicate3.And(f => f.Name.Contains("Not"));
                     predicate = predicate.And(predicate3);
 
                     var queryable = context.GetQueryable<AzureSearchResultItem>();
