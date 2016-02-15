@@ -22,14 +22,19 @@ namespace Website
                 using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-index").CreateSearchContext())
                 {
                     var predicate = PredicateBuilder.True<AzureSearchResultItem>();
-                    predicate = predicate.Or(s => s.Language == "en");
+                    predicate = predicate.And(s => s.Language == "en");
                     predicate = predicate.Or(s => s.Language == "da");
-                    
-                    var predicate1 = PredicateBuilder.True<AzureSearchResultItem>();
-                    //predicate1 = predicate1.And(f => f.TemplateName == "Image");
-                    //predicate1 = predicate1.And(f => f.Name.EndsWith("landscape"));
-                    predicate1 = predicate1.And(f => f.Name != "Windows Phone Landscape");
-                    predicate = predicate.And(predicate1);
+                    //predicate = predicate.And(f => f.Name.EndsWith("landscape"));
+                    //predicate = predicate.And(f => f.Name != "Windows Phone Landscape");
+
+                    var predicate2 = PredicateBuilder.True<AzureSearchResultItem>();
+                    predicate2 = predicate2.And(f => f.TemplateName == "Image");
+                    predicate2 = predicate2.Or(f => f.TemplateName == "Png");
+                    predicate = predicate.And(predicate2);
+
+                    var predicate3 = PredicateBuilder.True<AzureSearchResultItem>();
+                    predicate3 = predicate3.And(f => f.Name != "Windows Phone Landscape");
+                    predicate = predicate.And(predicate3);
 
                     var queryable = context.GetQueryable<AzureSearchResultItem>();
                     queryable = queryable.Where(predicate);

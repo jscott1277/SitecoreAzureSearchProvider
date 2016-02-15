@@ -78,6 +78,7 @@
     <Compile Include="ICompositeAnalyzer.cs" />
     <Compile Include="MatchNoDocsQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Queries\NotEqualQuery.cs" />
     <Compile Include="Queries\SpalnLastQuery.cs" />
     <Compile Include="Queries\SpanFuzzyQuery.cs" />
     <Compile Include="Queries\SpanSubQuery.cs" />

@@ -775,11 +775,7 @@ namespace Slalom.ContentSearch.Linq.Azure
         {
             var fieldNode = QueryHelper.GetFieldNode((BinaryNode)node.Operand);
             string queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node.Operand).Value, fieldNode.FieldKey).ToString();
-            var query = new TermQuery(new Term(fieldNode.FieldKey, "\"" + queryText + "\""));
-            var booleanQuery = new BooleanQuery();
-            booleanQuery.Add(query, Occur.MUST_NOT);
-            //booleanQuery.Add((Query)new MatchAllDocsQuery(), Occur.MUST);
-            return booleanQuery;
+            return new NotEqualQuery(fieldNode.FieldKey, queryText);
         }
 
         protected virtual Query VisitOr(OrNode node, AzureQueryMapper.AzureQueryMapperState mappingState)

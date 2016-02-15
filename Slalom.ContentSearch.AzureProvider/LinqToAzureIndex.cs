@@ -380,8 +380,7 @@ namespace Slalom.ContentSearch.AzureProvider
             //END TESTING
 
             //TODO:  Figure out how to fix this in AzureQueryMapper
-            var fixNegateQueryRx = new Regex(@"\+\((\-.*\:.*)\)", RegexOptions.Compiled);
-            strQuery = fixNegateQueryRx.Replace(strQuery, "$1");
+            strQuery = strQuery.Replace("+-", "-");
 
             SearchLog.Log.Info(string.Format("ExecuteQueryAgainstAzure ({0}): {1} - Filter : {2}", this.context.Index.Name, strQuery, query.Filter != null ? query.Filter.ToString() : string.Empty), null);
 
