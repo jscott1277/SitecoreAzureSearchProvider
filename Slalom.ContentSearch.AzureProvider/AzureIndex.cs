@@ -348,7 +348,7 @@ namespace Slalom.ContentSearch.AzureProvider
                         Fields = fields
                     };
 
-                    AzureServiceClient.Indexes.CreateOrUpdate(definition);
+                    AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
                     this.AzureSchemaBuilt = true;
                 }
                 catch (Exception ex)
@@ -392,7 +392,7 @@ namespace Slalom.ContentSearch.AzureProvider
                     Fields = fields
                 };
 
-                AzureServiceClient.Indexes.CreateOrUpdate(definition);
+                AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
             }
             catch (Exception ex)
             {
