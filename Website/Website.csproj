@@ -124,17 +124,17 @@
     <Folder Include="Serialization\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Slalom.ContentSearch.AzureProvider\Slalom.ContentSearch.AzureProvider.csproj">
+    <ProjectReference Include="..\Jarstan.ContentSearch.AzureProvider\Jarstan.ContentSearch.AzureProvider.csproj">
       <Project>{c6d9c297-f714-4dc3-885c-4a58ca5f919b}</Project>
-      <Name>Slalom.ContentSearch.AzureProvider</Name>
+      <Name>Jarstan.ContentSearch.AzureProvider</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Slalom.ContentSearch\Slalom.ContentSearch.csproj">
+    <ProjectReference Include="..\Jarstan.ContentSearch\Jarstan.ContentSearch.csproj">
       <Project>{aa50051d-ecab-4eef-8eac-2466f48410c5}</Project>
-      <Name>Slalom.ContentSearch</Name>
+      <Name>Jarstan.ContentSearch</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Slalom.ContentSearch.Linq.Azure\Slalom.ContentSearch.Linq.Azure.csproj">
+    <ProjectReference Include="..\Jarstan.ContentSearch.Linq.Azure\Jarstan.ContentSearch.Linq.Azure.csproj">
       <Project>{559b21f4-fd53-4517-977b-c6cc35711f58}</Project>
-      <Name>Slalom.ContentSearch.Linq.Azure</Name>
+      <Name>Jarstan.ContentSearch.Linq.Azure</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -176,7 +176,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Web.config" />
-    <Content Include="App_Config\Include\Slalom.ContentSearch\Slalom.ContentSearch.Azure.DefaultIndexConfiguration.config" />
+    <Content Include="App_Config\Include\Jarstan.ContentSearch\Jarstan.ContentSearch.Azure.DefaultIndexConfiguration.config" />
     <None Include="Properties\PublishProfiles\Dev.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
@@ -186,7 +186,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="App_Config\Include\Slalom.ContentSearch\Slalom.ContentSearch.AzureMaster.config">
+    <Content Include="App_Config\Include\Jarstan.ContentSearch\Jarstan.ContentSearch.AzureMaster.config">
       <SubType>Designer</SubType>
     </Content>
   </ItemGroup>

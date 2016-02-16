@@ -1,6 +1,6 @@
 ﻿using Sitecore.ContentSearch;
 using Sitecore.ContentSearch.Linq;
-using Slalom.ContentSearch.SearchTypes;
+using Jarstan.ContentSearch.SearchTypes;
 using Sitecore.Search;
 using System;
 using System.Collections.Generic;
