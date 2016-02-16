@@ -45,8 +45,8 @@ namespace Website
                     //TODO:  Only first orderby is being honored, appears to be an Azure Search Bug....
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
 
-                    //TODO: Filter method support
-                    //queryable = queryable.Filter(o => o.TemplateName != null);
+                    queryable = queryable.Filter(o => o.TemplateName == "Jpeg");
+                    queryable = queryable.Filter(o => o.TemplateName != "test");
 
                     //TODO:  GetFacets extension method support
                     //var facets = queryable.FacetOn(o => o.TemplateName).GetFacets();

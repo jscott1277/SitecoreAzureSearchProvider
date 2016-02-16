@@ -55,7 +55,7 @@ namespace Slalom.ContentSearch.Linq.Azure
         public override AzureQuery MapQuery(IndexQuery query)
         {
             var mappingState = new AzureQueryMapperState(this.Parameters.ExecutionContexts);
-            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQuery, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
+            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
         }
 
         protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapperState mappingState)
@@ -360,20 +360,7 @@ namespace Slalom.ContentSearch.Linq.Azure
                 case QueryNodeType.Matches:
                     return this.VisitMatches((MatchesNode)node, mappingState);
                 case QueryNodeType.Filter:
-                    if (mappingState.FilterQuery == null)
-                        mappingState.FilterQuery = this.VisitFilter((FilterNode)node, mappingState);
-                    else
-                        mappingState.FilterQuery = new BooleanQuery()
-                        {
-                          {
-                            mappingState.FilterQuery,
-                            Occur.MUST
-                          },
-                          {
-                            this.VisitFilter((FilterNode) node, mappingState),
-                            Occur.MUST
-                          }
-                        };
+                    mappingState.FilterQueries.Add((FilterQuery)this.VisitFilter((FilterNode)node, mappingState));
                     return this.Visit(((FilterNode)node).SourceNode, mappingState);
                 case QueryNodeType.GetResults:
                     this.StripGetResults((GetResultsNode)node, mappingState.AdditionalQueryMethods);
@@ -822,8 +809,70 @@ namespace Slalom.ContentSearch.Linq.Azure
 
         protected virtual Query VisitFilter(FilterNode node, AzureQueryMapperState mappingState)
         {
-            var mappingState1 = new AzureQueryMapperState(mappingState.ExecutionContexts);
-            return this.Visit(node.PredicateNode, mappingState1);
+            var predNode = node.PredicateNode;
+            switch (predNode.NodeType)
+            {
+                case QueryNodeType.Between:
+                    //TODO:  RangeQuery
+                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
+                case QueryNodeType.Equal:
+                    return VisitEqualFilter((EqualNode)predNode);
+                case QueryNodeType.GreaterThan:
+                    return VisitGreaterThanFilter((GreaterThanNode)predNode);
+                case QueryNodeType.GreaterThanOrEqual:
+                    return VisitGreaterThanOrEqualFilter((GreaterThanOrEqualNode)predNode);
+                case QueryNodeType.LessThan:
+                    return VisitLessThanFilter((LessThanNode)predNode);
+                case QueryNodeType.LessThanOrEqual:
+                    return VisitLessThanOrEqualFilter((LessThanOrEqualNode)predNode);
+                case QueryNodeType.Not:
+                case QueryNodeType.NotEqual:
+                    return VisitNotFilter((NotNode)predNode);
+                default:
+                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
+            }   
+        }
+
+        protected virtual Query VisitLessThanOrEqualFilter(LessThanOrEqualNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
+            return new FilterQuery(fieldNode.FieldKey, valueNode.Value, FilterQuery.FilterQueryTypes.LessThanEquals);
+        }
+
+        protected virtual Query VisitLessThanFilter(LessThanNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
+            return new FilterQuery(fieldNode.FieldKey, valueNode.Value, FilterQuery.FilterQueryTypes.LessThan);
+        }
+
+        protected virtual Query VisitGreaterThanOrEqualFilter(GreaterThanOrEqualNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
+            return new FilterQuery(fieldNode.FieldKey, valueNode.Value, FilterQuery.FilterQueryTypes.GreaterThanEquals);
+        }
+
+        protected virtual Query VisitGreaterThanFilter(GreaterThanNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = QueryHelper.GetValueNode(node, fieldNode.FieldType);
+            return new FilterQuery(fieldNode.FieldKey, valueNode.Value, FilterQuery.FilterQueryTypes.GreaterThan);
+        }
+
+        protected virtual Query VisitNotFilter(NotNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode((BinaryNode)node.Operand);
+            var queryText = this.ValueFormatter.FormatValueForIndexStorage(QueryHelper.GetValueNode<string>((BinaryNode)node.Operand).Value, fieldNode.FieldKey).ToString();
+            return new FilterQuery(fieldNode.FieldKey, queryText, FilterQuery.FilterQueryTypes.NotEquals);
+        }
+
+        protected virtual Query VisitEqualFilter(EqualNode node)
+        {
+            var fieldNode = QueryHelper.GetFieldNode(node);
+            var valueNode = !(fieldNode.FieldType != typeof(string)) ? QueryHelper.GetValueNode<object>(node) : QueryHelper.GetValueNode(node, fieldNode.FieldType);
+            return new FilterQuery(fieldNode.FieldKey, valueNode.Value, FilterQuery.FilterQueryTypes.Equals);
         }
 
         protected bool ProcessAsVirtualField(string fieldName, AzureQueryMapperState mappingState)
@@ -899,7 +948,7 @@ namespace Slalom.ContentSearch.Linq.Azure
         {
             public List<QueryMethod> AdditionalQueryMethods { get; set; }
 
-            public Query FilterQuery { get; set; }
+            public FiltersListQuery FilterQueries { get; set; }
 
             public List<IFieldQueryTranslator> VirtualFieldProcessors { get; set; }
 
@@ -916,6 +965,7 @@ namespace Slalom.ContentSearch.Linq.Azure
                 this.FacetQueries = new List<FacetQuery>();
                 this.UsedAnalyzers = new List<Tuple<string, ComparisonType, Analyzer>>();
                 this.ExecutionContexts = executionContexts != null ? Enumerable.ToList(executionContexts) : new List<IExecutionContext>();
+                this.FilterQueries = new FiltersListQuery();
             }
         }
     }

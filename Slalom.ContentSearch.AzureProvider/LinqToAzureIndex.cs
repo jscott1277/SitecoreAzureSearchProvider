@@ -334,11 +334,10 @@ namespace Slalom.ContentSearch.AzureProvider
                 }
             }
 
-            //TODO:  $filter
-            //if (query.Filter != null)
-            //{
-            //    var filter = new CachingWrapperFilter(new QueryWrapperFilter(query.Filter));
-            //}
+            if (query.Filter != null)
+            {
+                searchParams.Filter = query.Filter.ToString();
+            }
 
             //var weight = this.context.Searcher.CreateWeight(query.Query);
             
