@@ -292,7 +292,9 @@ namespace Slalom.ContentSearch.Linq.Azure
                     this.StripAny((AnyNode)node, mappingState.AdditionalQueryMethods);
                     return this.Visit(((AnyNode)node).SourceNode, mappingState);
                 case QueryNodeType.Between:
-                    return this.VisitBetween((BetweenNode)node, mappingState);
+                    mappingState.FilterQueries.Add((BaseFilterQuery)this.VisitFilter((FilterNode)node, mappingState));
+                    return this.Visit(((FilterNode)node).SourceNode, mappingState);
+                //return this.VisitBetween((BetweenNode)node, mappingState);
                 case QueryNodeType.Cast:
                     this.StripCast((CastNode)node, mappingState.AdditionalQueryMethods);
                     return this.Visit(((CastNode)node).SourceNode, mappingState);
@@ -360,7 +362,7 @@ namespace Slalom.ContentSearch.Linq.Azure
                 case QueryNodeType.Matches:
                     return this.VisitMatches((MatchesNode)node, mappingState);
                 case QueryNodeType.Filter:
-                    mappingState.FilterQueries.Add((FilterQuery)this.VisitFilter((FilterNode)node, mappingState));
+                    mappingState.FilterQueries.Add((BaseFilterQuery)this.VisitFilter((FilterNode)node, mappingState));
                     return this.Visit(((FilterNode)node).SourceNode, mappingState);
                 case QueryNodeType.GetResults:
                     this.StripGetResults((GetResultsNode)node, mappingState.AdditionalQueryMethods);
@@ -427,6 +429,13 @@ namespace Slalom.ContentSearch.Linq.Azure
             var includeLower = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Lower;
             var includeUpper = node.Inclusion == Inclusion.Both || node.Inclusion == Inclusion.Upper;
             var query = this.VisitBetween(node.Field, node.From, node.To, includeLower, includeUpper);
+            query.Boost = node.Boost;
+            return query;
+        }
+
+        protected virtual Query VisitBetweenFilter(BetweenNode node)
+        {
+            var query = new BetweenFilterQuery(node.Field, node.From, node.To, node.Inclusion);
             query.Boost = node.Boost;
             return query;
         }
@@ -813,8 +822,7 @@ namespace Slalom.ContentSearch.Linq.Azure
             switch (predNode.NodeType)
             {
                 case QueryNodeType.Between:
-                    //TODO:  RangeQuery
-                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
+                    return VisitBetweenFilter((BetweenNode)predNode);
                 case QueryNodeType.Equal:
                     return VisitEqualFilter((EqualNode)predNode);
                 case QueryNodeType.GreaterThan:

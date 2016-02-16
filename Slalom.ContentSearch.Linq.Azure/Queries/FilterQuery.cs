@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Slalom.ContentSearch.Linq.Azure.Queries
 {
-    public class FilterQuery : Query
+    public class FilterQuery : BaseFilterQuery
     {
         public enum FilterQueryTypes
         {

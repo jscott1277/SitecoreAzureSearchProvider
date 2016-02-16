@@ -9,11 +9,11 @@ using Lucene.Net.Support;
 
 namespace Slalom.ContentSearch.Linq.Azure.Queries
 {
-    public class FiltersListQuery : Query, IEnumerable<FilterQuery>, IEnumerable, ICloneable
+    public class FiltersListQuery : Query, IEnumerable<BaseFilterQuery>, IEnumerable, ICloneable
     {
-        private EquatableList<FilterQuery> clauses = new EquatableList<FilterQuery>();
+        private EquatableList<BaseFilterQuery> clauses = new EquatableList<BaseFilterQuery>();
 
-        public void Add(FilterQuery query)
+        public void Add(BaseFilterQuery query)
         {
             clauses.Add(query);
         }
@@ -23,7 +23,7 @@ namespace Slalom.ContentSearch.Linq.Azure.Queries
             return String.Join(" and ", this.clauses);
         }
 
-        public virtual List<FilterQuery> Clauses
+        public virtual List<BaseFilterQuery> Clauses
         {
             get
             {
@@ -31,7 +31,7 @@ namespace Slalom.ContentSearch.Linq.Azure.Queries
             }
         }
 
-        public IEnumerator<FilterQuery> GetEnumerator()
+        public IEnumerator<BaseFilterQuery> GetEnumerator()
         {
             return clauses.GetEnumerator();
         }
@@ -44,7 +44,7 @@ namespace Slalom.ContentSearch.Linq.Azure.Queries
         public override object Clone()
         {
             var filtersListQuery = (FiltersListQuery)base.Clone();
-            filtersListQuery.clauses = (EquatableList<FilterQuery>)this.clauses.Clone();
+            filtersListQuery.clauses = (EquatableList<BaseFilterQuery>)this.clauses.Clone();
             return filtersListQuery;
         }
     }

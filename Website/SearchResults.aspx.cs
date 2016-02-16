@@ -42,11 +42,13 @@ namespace Website
 
                     var queryable = context.GetQueryable<AzureSearchResultItem>();
                     queryable = queryable.Where(predicate);
+
+                    //queryable = queryable.Filter(o => o.TemplateName == "Jpeg");
+                    //queryable = queryable.Filter(o => o.TemplateName != "test");
+                    //queryable = queryable.Filter(o => o.iVersion.Between(1, 3, Inclusion.None));
+
                     //TODO:  Only first orderby is being honored, appears to be an Azure Search Bug....
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
-
-                    queryable = queryable.Filter(o => o.TemplateName == "Jpeg");
-                    queryable = queryable.Filter(o => o.TemplateName != "test");
 
                     //TODO:  GetFacets extension method support
                     //var facets = queryable.FacetOn(o => o.TemplateName).GetFacets();

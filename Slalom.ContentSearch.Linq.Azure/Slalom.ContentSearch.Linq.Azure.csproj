@@ -78,6 +78,8 @@
     <Compile Include="ICompositeAnalyzer.cs" />
     <Compile Include="MatchNoDocsQuery.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Queries\BaseFilterQuery.cs" />
+    <Compile Include="Queries\BetweenFilterQuery.cs" />
     <Compile Include="Queries\FilterQuery.cs" />
     <Compile Include="Queries\FiltersListQuery.cs" />
     <Compile Include="Queries\NotEqualQuery.cs" />
