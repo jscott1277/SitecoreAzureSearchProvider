@@ -1,5 +1,5 @@
 # Sitecore 8.1 Azure Search Provider
-A replacement to the default Lucene search provider in Sitecore 8.1.  Uses Azure Search instead.
+A new search provider to use in place of the default Lucene search provider in Sitecore 8.1.  This provider uses Azure Search, which is a cloud based search provider, as opposed to the file based, Lucene search provider.  See the Issues tab or the Wiki for information on current issues.
 
 Prerequisites:
 
