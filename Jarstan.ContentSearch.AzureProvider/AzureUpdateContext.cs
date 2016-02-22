@@ -102,7 +102,9 @@ namespace Jarstan.ContentSearch.AzureProvider
         public void Delete(IIndexableId id)
         {
             var searchParams = new SearchParameters();
+            searchParams.SearchFields = new List<string>();
             searchParams.SearchFields.Add("s_group");
+            searchParams.Select = new List<string>();
             searchParams.Select.Add("s_key");
             var resultTask = AzureIndex.AzureIndexClient.Documents.SearchWithHttpMessagesAsync(id.ToString(), searchParams);
             resultTask.Wait();
