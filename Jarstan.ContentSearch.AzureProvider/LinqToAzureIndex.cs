@@ -228,80 +228,25 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private IDictionary<string, ICollection<KeyValuePair<string, int>>> GetFacets(AzureQuery query, IEnumerable<string> facetFields, int? minResultCount, IEnumerable<string> filters, bool? sort, string prefix, int? limit)
         {
-            
             Assert.ArgumentNotNull((object)query, "query");
             Assert.ArgumentNotNull((object)facetFields, "facetFields");
-            var query1 = query.Query;
-            var queryParsed = query1;
-            if (query.Filter != null)
-                queryParsed = new BooleanQuery()
-        {
-          {
-            query1,
-            Occur.MUST
-          },
-          {
-            query.Filter,
-            Occur.MUST
-          }
-        };
-            string[] facetFieldArray = Enumerable.ToArray<string>(facetFields);
-            string[] filtersArray = filters != null ? Enumerable.ToArray<string>(filters) : (string[])null;
-            SearchLog.Log.Info(string.Format("GetFacets : {0} : {1}{2}", (object)string.Join(",", facetFieldArray), (object)query1, filtersArray != null ? (object)(" Filters: " + string.Join(",", filtersArray)) : (object)string.Empty), (Exception)null);
-            Dictionary<string, ICollection<KeyValuePair<string, int>>> dictionary = new Dictionary<string, ICollection<KeyValuePair<string, int>>>(facetFieldArray.Length);
-            return dictionary;
+            
+            SearchLog.Log.Info(string.Format("GetFacets : {0} : {1}{2}", string.Join(",", facetFields), query, filters != null ? (" Filters: " + string.Join(",", filters)) : string.Empty), null);
+            var dictionary = new Dictionary<string, ICollection<KeyValuePair<string, int>>>();
+            var searchResult = ExecuteQueryAgainstAzure(query, facetFields);
 
-      //      List<SimpleFacetedSearch.Hits> shardHits = new List<SimpleFacetedSearch.Hits>(Enumerable.Count<ILuceneProviderSearchable>(this.context.Searchables));
-      //      Parallel.ForEach<ILuceneProviderSearchable>(this.context.Searchables, (Action<ILuceneProviderSearchable>)(searchable =>
-      //      {
-      //          using (IndexSearcher searcher = searchable.CreateSearcher(LuceneIndexAccess.ReadOnly | LuceneIndexAccess.ReadOnlyCached))
-      //          {
-      //              try
-      //              {
-      //                  SimpleFacetedSearch.Hits hits = (filtersArray == null || filtersArray.Length <= 0 ? new SimpleFacetedSearch(searcher.IndexReader, facetFieldArray) : new SimpleFacetedSearch(searcher.IndexReader, facetFieldArray[0], filtersArray)).Search(queryParsed, 10);
-      //                  lock (shardHits)
-      //                    shardHits.Add(hits);
-      //              }
-      //              catch (ArgumentException ex)
-      //              {
-      //                  if (ex.Message.EndsWith("does not have any term position data stored") || ex.Message.EndsWith("does not have term vector offsets data stored"))
-      //                      SearchLog.Log.Warn(ex.Message + ". The facet query will not match any documents - Update the fieldmap configuration for the field to vector type WITH_OFFSETS or WITH_POSITIONS_OFFSETS", (Exception)ex);
-      //                  else
-      //                      throw;
-      //              }
-      //              catch (Exception ex)
-      //              {
-      //                  throw;
-      //              }
-      //          }
-      //      }));
-      //      string index = string.Join(",", facetFieldArray);
-      //      List<KeyValuePair<string, int>> list = new List<KeyValuePair<string, int>>();
-      //      foreach (\u003C\u003Ef__AnonymousType0<string, long> fAnonymousType0 in Enumerable.Select(Enumerable.GroupBy<SimpleFacetedSearch.HitsPerFacet, string>(Enumerable.Where<SimpleFacetedSearch.HitsPerFacet>(Enumerable.SelectMany<SimpleFacetedSearch.Hits, SimpleFacetedSearch.HitsPerFacet>((IEnumerable<SimpleFacetedSearch.Hits>)shardHits, (Func<SimpleFacetedSearch.Hits, IEnumerable<SimpleFacetedSearch.HitsPerFacet>>)(sh => (IEnumerable<SimpleFacetedSearch.HitsPerFacet>)sh.HitsPerFacet)), (Func<SimpleFacetedSearch.HitsPerFacet, bool>)(facet =>
-      //      {
-      //          long hitCount = facet.HitCount;
-      //          int? nullable = minResultCount;
-      //          if (hitCount >= (long)nullable.GetValueOrDefault())
-      //              return nullable.HasValue;
-      //          return false;
-      //      })), (Func<SimpleFacetedSearch.HitsPerFacet, string>)(facet => facet.Name.ToString())), grouping => new
-      //      {
-      //          Name = grouping.Key,
-      //          HitCount = Enumerable.Sum<SimpleFacetedSearch.HitsPerFacet>((IEnumerable<SimpleFacetedSearch.HitsPerFacet>)grouping, (Func<SimpleFacetedSearch.HitsPerFacet, long>)(facet => facet.HitCount))
-      //      }))
-      //{
-      //          string name = fAnonymousType0.Name;
-      //          long hitCount = fAnonymousType0.HitCount;
-      //          long num = hitCount;
-      //          int? nullable = minResultCount;
-      //          if ((num < (long)nullable.GetValueOrDefault() ? 0 : (nullable.HasValue ? 1 : 0)) != 0)
-      //              list.Add(new KeyValuePair<string, int>(name, (int)hitCount));
-      //      }
-      //      dictionary[index] = (ICollection<KeyValuePair<string, int>>)list;
-      //      return (IDictionary<string, ICollection<KeyValuePair<string, int>>>)dictionary;
+            var minCount = minResultCount.HasValue ? minResultCount.Value : 0;
+
+            foreach (var facetResult in searchResult.Facets)
+            {
+                var vals = facetResult.Value.Where(s => s.Count.Value >= minCount && !filters.Contains(s.Value.ToString())).Select(s => new KeyValuePair<string, int>(s.Value.ToString(), (int)s.Count.Value)).ToList();
+                dictionary.Add(facetResult.Key, vals);
+            }
+
+            return dictionary;
         }
 
-        private DocumentSearchResult ExecuteQueryAgainstAzure(AzureQuery query)
+        private DocumentSearchResult ExecuteQueryAgainstAzure(AzureQuery query, IEnumerable<string> facetFields = null)
         {
             if (this.settings.EnableSearchDebug())
             {
@@ -337,6 +282,15 @@ namespace Jarstan.ContentSearch.AzureProvider
             if (query.Filter != null)
             {
                 searchParams.Filter = query.Filter.ToString();
+            }
+
+            if (facetFields != null && facetFields.Any())
+            {
+                foreach (var facetField in facetFields)
+                {
+                    searchParams.Facets = new List<string>();
+                    searchParams.Facets.Add(facetField);
+                }
             }
 
             //var weight = this.context.Searcher.CreateWeight(query.Query);

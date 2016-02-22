@@ -51,7 +51,7 @@ namespace Website
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
 
                     //TODO:  GetFacets extension method support
-                    //var facets = queryable.FacetOn(o => o.TemplateName).GetFacets();
+                    var facets = queryable.FacetOn(o => o.TemplateName, 10/*, new List<string>() { "Gif" }*/).GetFacets();
 
                     var results = queryable.GetResults();
                     gvResults.DataSource = results.Hits.Select(r => r.Document);
