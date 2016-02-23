@@ -235,11 +235,11 @@ namespace Jarstan.ContentSearch.AzureProvider
             var dictionary = new Dictionary<string, ICollection<KeyValuePair<string, int>>>();
             var searchResult = ExecuteQueryAgainstAzure(query, facetFields);
 
-            var minCount = minResultCount.HasValue ? minResultCount.Value : 0;
+            var minCount = limit.HasValue ? limit.Value : 0;
 
             foreach (var facetResult in searchResult.Facets)
             {
-                var vals = facetResult.Value.Where(s => s.Count.Value >= minCount && !filters.Contains(s.Value.ToString())).Select(s => new KeyValuePair<string, int>(s.Value.ToString(), (int)s.Count.Value)).ToList();
+                var vals = facetResult.Value.Where(s => s.Count.Value >= minCount).Select(s => new KeyValuePair<string, int>(s.Value.ToString(), (int)s.Count.Value)).ToList();              
                 dictionary.Add(facetResult.Key, vals);
             }
 

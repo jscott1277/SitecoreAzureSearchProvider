@@ -50,8 +50,10 @@ namespace Website
                     //TODO:  Only first orderby is being honored, appears to be an Azure Search Bug....
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
 
-                    //TODO:  GetFacets extension method support
-                    var facets = queryable.FacetOn(o => o.TemplateName, 10/*, new List<string>() { "Gif" }*/).GetFacets();
+                    //GetFacets extension method support
+                    var facets0 = queryable.FacetOn(o => o.TemplateName).GetFacets();
+                    var facets1 = queryable.FacetOn(o => o.TemplateName, 4).GetFacets();
+                    var facets2 = queryable.FacetOn(o => o.TemplateName, 4, new List<string>() { "Jpeg", "Image" }).GetFacets();
 
                     var results = queryable.GetResults();
                     gvResults.DataSource = results.Hits.Select(r => r.Document);
