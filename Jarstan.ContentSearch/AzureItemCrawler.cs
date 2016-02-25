@@ -32,13 +32,13 @@ namespace Jarstan.ContentSearch
         {
             get
             {
-                if (!string.IsNullOrEmpty(this.database))
-                    return this.database;
-                return (string)null;
+                if (!string.IsNullOrEmpty(database))
+                    return database;
+                return null;
             }
             set
             {
-                this.database = value;
+                database = value;
             }
         }
 
@@ -46,19 +46,19 @@ namespace Jarstan.ContentSearch
         {
             get
             {
-                if (string.IsNullOrEmpty(this.root))
+                if (string.IsNullOrEmpty(root))
                 {
                     var database = ContentSearchManager.Locator.GetInstance<IFactory>().GetDatabase(this.database);
-                    Assert.IsNotNull(database, "Database " + this.database + " does not exist");
+                    Assert.IsNotNull(database, "Database " + database + " does not exist");
                     using (new SecurityDisabler())
-                        this.root = database.GetRootItem().ID.ToString();
+                        root = database.GetRootItem().ID.ToString();
                 }
-                return this.root;
+                return root;
             }
             set
             {
-                this.root = value;
-                this.rootItem = (Item)null;
+                root = value;
+                rootItem = (Item)null;
             }
         }
 
@@ -66,10 +66,10 @@ namespace Jarstan.ContentSearch
         {
             get
             {
-                this.rootItem = this.GetRootItem();
-                if (this.rootItem == null)
-                    throw new InvalidOperationException(string.Format("[Index={0}, Crawler={1}, Database={2}] Root item could not be found: {3}.", this.index != null ? this.index.Name : "NULL", typeof(SitecoreItemCrawler).Name, this.database, this.root));
-                return this.rootItem;
+                rootItem = GetRootItem();
+                if (rootItem == null)
+                    throw new InvalidOperationException(string.Format("[Index={0}, Crawler={1}, Database={2}] Root item could not be found: {3}.", index != null ? index.Name : "NULL", typeof(SitecoreItemCrawler).Name, database, root));
+                return rootItem;
             }
         }
 
@@ -86,75 +86,75 @@ namespace Jarstan.ContentSearch
 
         private Item GetRootItem()
         {
-            if (this.rootItem == null)
+            if (rootItem == null)
             {
                 var database = ContentSearchManager.Locator.GetInstance<IFactory>().GetDatabase(this.database);
-                Assert.IsNotNull(database, "Database " + this.database + " does not exist");
+                Assert.IsNotNull(database, "Database " + database + " does not exist");
                 using (new SecurityDisabler())
                 {
-                    this.rootItem = database.GetItem(this.Root);
-                    if (this.rootItem == null)
+                    rootItem = database.GetItem(Root);
+                    if (rootItem == null)
                     {
-                        if (this.rootItemErrorLogged == 0)
+                        if (rootItemErrorLogged == 0)
                         {
-                            Interlocked.Increment(ref this.rootItemErrorLogged);
-                            var message = string.Format("[Index={0}, Crawler={1}, Database={2}] Root item could not be found: {3}.", this.index != null ? this.index.Name : "NULL", typeof(SitecoreItemCrawler).Name, this.database, this.root);
+                            Interlocked.Increment(ref rootItemErrorLogged);
+                            var message = string.Format("[Index={0}, Crawler={1}, Database={2}] Root item could not be found: {3}.", index != null ? index.Name : "NULL", typeof(SitecoreItemCrawler).Name, database, root);
                             CrawlingLog.Log.Error(message);
                             Log.Error(message, this);
                         }
                     }
                 }
             }
-            return this.rootItem;
+            return rootItem;
         }
 
         public override void Initialize(ISearchIndex index)
         {
             Assert.ArgumentNotNull(index, "index");
-            Assert.IsNotNull(this.Database, "Database element not set.");
-            Assert.IsNotNull(this.Root, "Root element not set.");
-            if (this.Operations == null)
+            Assert.IsNotNull(Database, "Database element not set.");
+            Assert.IsNotNull(Root, "Root element not set.");
+            if (Operations == null)
             {
-                this.Operations = index.Operations;
-                CrawlingLog.Log.Info(string.Format("[Index={0}] Initializing {3}. DB:{1} / Root:{2}", index.Name, this.Database, this.Root, typeof(SitecoreItemCrawler).Name));
+                Operations = index.Operations;
+                CrawlingLog.Log.Info(string.Format("[Index={0}] Initializing {3}. DB:{1} / Root:{2}", index.Name, Database, Root, typeof(SitecoreItemCrawler).Name));
             }
 
-            this.index = index;
+           this.index = index;
         }
 
         public virtual int GetContextIndexRanking(IIndexable indexable)
         {
             var sitecoreIndexableItem = indexable as SitecoreIndexableItem;
-            if (sitecoreIndexableItem == null || this.GetRootItem() == null)
+            if (sitecoreIndexableItem == null || GetRootItem() == null)
                 return int.MaxValue;
-            Item obj = (Item)sitecoreIndexableItem;
+            var obj = (Item)sitecoreIndexableItem;
             using (new SecurityDisabler())
             {
                 using (new SitecoreCachesDisabler())
-                    return obj.Axes.Level - this.RootItem.Axes.Level;
+                    return obj.Axes.Level - RootItem.Axes.Level;
             }
         }
 
         public override bool IsExcludedFromIndex(IIndexable indexable)
         {
-            return this.IsExcludedFromIndex((SitecoreIndexableItem)indexable, true);
+            return IsExcludedFromIndex((SitecoreIndexableItem)indexable, true);
         }
 
         public override void Update(IProviderUpdateContext context, IIndexableUniqueId indexableUniqueId, IndexingOptions indexingOptions = IndexingOptions.Default)
         {
-            this.Update(context, indexableUniqueId, null, indexingOptions);
+            Update(context, indexableUniqueId, null, indexingOptions);
         }
 
         public override void Update(IProviderUpdateContext context, IIndexableUniqueId indexableUniqueId, IndexEntryOperationContext operationContext, IndexingOptions indexingOptions = IndexingOptions.Default)
         {
             Assert.ArgumentNotNull(indexableUniqueId, "indexableUniqueId");
 
-            if (!this.ShouldStartIndexing(indexingOptions))
+            if (!ShouldStartIndexing(indexingOptions))
             {
                 return;
             }
 
-            if (this.IsExcludedFromIndex(indexableUniqueId, true))
+            if (IsExcludedFromIndex(indexableUniqueId, true))
             {
                 return;
             }
@@ -166,7 +166,7 @@ namespace Jarstan.ContentSearch
                     var obj = Sitecore.Data.Database.GetItem((indexableUniqueId as SitecoreItemUniqueId));
                     if (obj != null)
                     {
-                        this.UpdateHierarchicalRecursive(context, obj, CancellationToken.None);
+                        UpdateHierarchicalRecursive(context, obj, CancellationToken.None);
                         return;
                     }
                 }
@@ -175,24 +175,24 @@ namespace Jarstan.ContentSearch
                 {
                     var obj = Sitecore.Data.Database.GetItem((indexableUniqueId as SitecoreItemUniqueId));
                     if (obj != null)
-                        this.UpdatePreviousVersion(obj, context);
+                        UpdatePreviousVersion(obj, context);
                 }
             }
-            var indexableAndCheckDeletes = this.GetIndexableAndCheckDeletes(indexableUniqueId);
+            var indexableAndCheckDeletes = GetIndexableAndCheckDeletes(indexableUniqueId);
             if (indexableAndCheckDeletes == null)
             {
-                if (this.GroupShouldBeDeleted(indexableUniqueId.GroupId))
+                if (GroupShouldBeDeleted(indexableUniqueId.GroupId))
                 {
-                    this.Delete(context, indexableUniqueId.GroupId, IndexingOptions.Default);
+                    Delete(context, indexableUniqueId.GroupId, IndexingOptions.Default);
                 }
                 else
                 {
-                    this.Delete(context, indexableUniqueId, IndexingOptions.Default);
+                    Delete(context, indexableUniqueId, IndexingOptions.Default);
                 }
             }
             else
             {
-                this.DoUpdate(context, indexableAndCheckDeletes, operationContext);
+                DoUpdate(context, indexableAndCheckDeletes, operationContext);
             }
         }
 
@@ -200,20 +200,20 @@ namespace Jarstan.ContentSearch
         {
             var item = (Item)indexable;
             Assert.ArgumentNotNull(item, "item");
-            var documentOptions = this.DocumentOptions;
+            var documentOptions = DocumentOptions;
             Assert.IsNotNull(documentOptions, "DocumentOptions");
-            if (!item.Database.Name.Equals(this.Database, StringComparison.InvariantCultureIgnoreCase))
+            if (!item.Database.Name.Equals(Database, StringComparison.InvariantCultureIgnoreCase))
             {
-                this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", this.index.Name, item.Uri);
+                Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", index.Name, item.Uri);
                 return true;
             }
             if (checkLocation)
             {
-                if (this.GetRootItem() == null)
+                if (GetRootItem() == null)
                     return true;
-                if (!this.IsAncestorOf(item))
+                if (!IsAncestorOf(item))
                 {
-                    this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", this.index.Name, item.Uri);
+                    Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", index.Name, item.Uri);
                     return true;
                 }
             }
@@ -223,7 +223,7 @@ namespace Jarstan.ContentSearch
                     CrawlingLog.Log.Warn("You have specified both IncludeTemplates and ExcludeTemplates. This logic is not supported. Exclude templates will be ignored.");
                 if (documentOptions.IncludedTemplates.Contains(item.TemplateID.ToString()))
                     return false;
-                this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", this.index.Name, item.Uri);
+                Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", index.Name, item.Uri);
                 return true;
             }
             if (documentOptions.HasIncludedTemplates)
@@ -232,12 +232,12 @@ namespace Jarstan.ContentSearch
                     CrawlingLog.Log.Warn("You have specified both IncludeTemplates and ExcludeTemplates. This logic is not supported. Exclude templates will be ignored.");
                 if (documentOptions.IncludedTemplates.Contains(item.TemplateID.ToString()))
                     return false;
-                this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", this.index.Name, item.Uri);
+                Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", index.Name, item.Uri);
                 return true;
             }
             if (!documentOptions.ExcludedTemplates.Contains(item.TemplateID.ToString()))
                 return false;
-            this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", this.index.Name, item.Uri);
+            Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", index.Name, item.Uri);
             return true;
         }
 
@@ -247,8 +247,8 @@ namespace Jarstan.ContentSearch
             {
                 using (new WriteCachesDisabler())
                 {
-                    if (this.RootItem != null)
-                        return item.Paths.LongID.StartsWith(this.RootItem.Paths.LongID, StringComparison.InvariantCulture);
+                    if (RootItem != null)
+                        return item.Paths.LongID.StartsWith(RootItem.Paths.LongID, StringComparison.InvariantCulture);
                 }
             }
             return false;
@@ -256,18 +256,18 @@ namespace Jarstan.ContentSearch
 
         protected override bool IsExcludedFromIndex(IIndexableUniqueId indexableUniqueId)
         {
-            return this.IsExcludedFromIndex(indexableUniqueId, false);
+            return IsExcludedFromIndex(indexableUniqueId, false);
         }
 
         protected override bool IsExcludedFromIndex(IIndexableUniqueId indexableUniqueId, bool checkLocation)
         {
             var itemUri = (ItemUri)(indexableUniqueId as SitecoreItemUniqueId);
-            if (itemUri != null && !itemUri.DatabaseName.Equals(this.Database, StringComparison.InvariantCultureIgnoreCase))
+            if (itemUri != null && !itemUri.DatabaseName.Equals(Database, StringComparison.InvariantCultureIgnoreCase))
                 return true;
             if (checkLocation)
             {
                 var item = Sitecore.Data.Database.GetItem((indexableUniqueId as SitecoreItemUniqueId));
-                if (item != null && !this.IsAncestorOf(item))
+                if (item != null && !IsAncestorOf(item))
                     return true;
             }
             return false;
@@ -279,10 +279,10 @@ namespace Jarstan.ContentSearch
             Assert.ArgumentNotNull(indexable, "indexable");
             using (new LanguageFallbackItemSwitcher(new bool?(context.Index.EnableItemLanguageFallback)))
             {
-                this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:adding", context.Index.Name, indexable.UniqueId, indexable.AbsolutePath);
-                if (!this.IsExcludedFromIndex(indexable, false))
+                Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:adding", context.Index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                if (!IsExcludedFromIndex(indexable, false))
                 {
-                    foreach (Language language in indexable.Item.Languages)
+                    foreach (var language in indexable.Item.Languages)
                     {
                         Item item;
                         using (new WriteCachesDisabler())
@@ -296,45 +296,45 @@ namespace Jarstan.ContentSearch
                             Item[] versions;
                             using (new WriteCachesDisabler())
                                 versions = item.Versions.GetVersions(false);
-                            foreach (Item version in versions)
+                            foreach (var version in versions)
                             {
                                 var sitecoreIndexableItem = (SitecoreIndexableItem)version;
                                 var indexableBuiltinFields = (IIndexableBuiltinFields)sitecoreIndexableItem;
                                 indexableBuiltinFields.IsLatestVersion = indexableBuiltinFields.Version == item.Version.Number;
                                 sitecoreIndexableItem.IndexFieldStorageValueFormatter = context.Index.Configuration.IndexFieldStorageValueFormatter;
-                                this.Operations.Add(sitecoreIndexableItem, context, this.index.Configuration);
+                                Operations.Add(sitecoreIndexableItem, context, index.Configuration);
                             }
                         }
                     }
                 }
-                this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:added", context.Index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:added", context.Index.Name, indexable.UniqueId, indexable.AbsolutePath);
             }
         }
 
         protected override void DoUpdate(IProviderUpdateContext context, SitecoreIndexableItem indexable)
         {
-            this.DoUpdate(context, indexable, null);
+            DoUpdate(context, indexable, null);
         }
 
         protected override void DoUpdate(IProviderUpdateContext context, SitecoreIndexableItem indexable, IndexEntryOperationContext operationContext)
         {
             Assert.ArgumentNotNull(context, "context");
             Assert.ArgumentNotNull(indexable, "indexable");
-            using (new LanguageFallbackItemSwitcher(new bool?(this.Index.EnableItemLanguageFallback)))
+            using (new LanguageFallbackItemSwitcher(new bool?(Index.EnableItemLanguageFallback)))
             {
-                if (this.IndexUpdateNeedDelete(indexable))
+                if (IndexUpdateNeedDelete(indexable))
                 {
-                    this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:deleteitem", this.index.Name, indexable.UniqueId, indexable.AbsolutePath);
-                    this.Operations.Delete(indexable, context);
+                    Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:deleteitem", index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                    Operations.Delete(indexable, context);
                 }
                 else
                 {
-                    this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updatingitem", this.index.Name, indexable.UniqueId, indexable.AbsolutePath);
-                    if (!this.IsExcludedFromIndex(indexable, true))
+                    Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updatingitem", index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                    if (!IsExcludedFromIndex(indexable, true))
                     {
                         if (operationContext != null && !operationContext.NeedUpdateAllVersions)
                         {
-                            this.UpdateItemVersion(context, indexable, operationContext);
+                            UpdateItemVersion(context, indexable, operationContext);
                         }
                         else
                         {
@@ -346,7 +346,7 @@ namespace Jarstan.ContentSearch
                                 {
                                     indexable.Item.Language
                                 };
-                            foreach (Language language in languageArray)
+                            foreach (var language in languageArray)
                             {
                                 Item item;
                                 using (new WriteCachesDisabler())
@@ -360,17 +360,17 @@ namespace Jarstan.ContentSearch
                                     Item[] versions;
                                     using (new SitecoreCachesDisabler())
                                         versions = item.Versions.GetVersions(false);
-                                    foreach (Item version in versions)
-                                        this.UpdateItemVersion(context, version, operationContext);
+                                    foreach (var version in versions)
+                                        UpdateItemVersion(context, version, operationContext);
                                 }
                             }
                         }
-                        this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updateditem", this.index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                        Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updateditem", index.Name, indexable.UniqueId, indexable.AbsolutePath);
                     }
-                    if (!this.DocumentOptions.ProcessDependencies)
+                    if (!DocumentOptions.ProcessDependencies)
                         return;
-                    this.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updatedependents", this.index.Name, indexable.UniqueId, indexable.AbsolutePath);
-                    this.UpdateDependents(context, indexable);
+                    Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:updatedependents", index.Name, indexable.UniqueId, indexable.AbsolutePath);
+                    UpdateDependents(context, indexable);
                 }
             }
         }
@@ -378,15 +378,15 @@ namespace Jarstan.ContentSearch
         [Obsolete("Use UpdateItemVersion(IProviderUpdateContext context, Item version, IndexEntryOperationContext operationContext) instead")]
         protected virtual void UpdateItemVersion(IProviderUpdateContext context, Item version)
         {
-            this.UpdateItemVersion(context, version, new IndexEntryOperationContext());
+            UpdateItemVersion(context, version, new IndexEntryOperationContext());
         }
 
         protected virtual void UpdateItemVersion(IProviderUpdateContext context, Item version, IndexEntryOperationContext operationContext)
         {
-            var versionIndexable = this.PrepareIndexableVersion(version, context);
-            this.Operations.Update((IIndexable)versionIndexable, context, context.Index.Configuration);
-            this.UpdateClones(context, versionIndexable);
-            this.UpdateLanguageFallbackDependentItems(context, versionIndexable, operationContext);
+            var versionIndexable = PrepareIndexableVersion(version, context);
+            Operations.Update(versionIndexable, context, context.Index.Configuration);
+            UpdateClones(context, versionIndexable);
+            UpdateLanguageFallbackDependentItems(context, versionIndexable, operationContext);
         }
 
         private void UpdateClones(IProviderUpdateContext context, SitecoreIndexableItem versionIndexable)
@@ -396,9 +396,9 @@ namespace Jarstan.ContentSearch
                 clones = versionIndexable.Item.GetClones(false);
             foreach (Item clone in clones)
             {
-                SitecoreIndexableItem sitecoreIndexableItem = this.PrepareIndexableVersion(clone, context);
-                if (!this.IsExcludedFromIndex(clone, false))
-                    this.Operations.Update((IIndexable)sitecoreIndexableItem, context, context.Index.Configuration);
+                SitecoreIndexableItem sitecoreIndexableItem = PrepareIndexableVersion(clone, context);
+                if (!IsExcludedFromIndex(clone, false))
+                    Operations.Update(sitecoreIndexableItem, context, context.Index.Configuration);
             }
         }
 
@@ -421,14 +421,14 @@ namespace Jarstan.ContentSearch
             }
             if (!item.Versions.IsLatestVersion())
                 return;
-            foreach (IIndexable indexable in Enumerable.Select<Item, SitecoreIndexableItem>(Enumerable.Where<Item>(Enumerable.SelectMany<Language, Item>((IEnumerable<Language>)LanguageFallbackManager.GetDependentLanguages(item.Language, item.Database, item.ID), (Func<Language, IEnumerable<Item>>)(language =>
+            foreach (var indexable in Enumerable.Select(Enumerable.Where<Item>(Enumerable.SelectMany(LanguageFallbackManager.GetDependentLanguages(item.Language, item.Database, item.ID), language =>
             {
                 var item2 = item.Database.GetItem(item.ID, language);
                 if (item2 == null)
-                    return (IEnumerable<Item>)new Item[0];
-                return (IEnumerable<Item>)item2.Versions.GetVersions();
-            })), (Func<Item, bool>)(item1 => !this.IsExcludedFromIndex((SitecoreIndexableItem)item1, false))), (Func<Item, SitecoreIndexableItem>)(item1 => this.PrepareIndexableVersion(item1, context))))
-                this.Operations.Update(indexable, context, context.Index.Configuration);
+                    return new Item[0];
+                return item2.Versions.GetVersions();
+            }), item1 => !IsExcludedFromIndex(item1, false)), item1 => PrepareIndexableVersion(item1, context)))
+                Operations.Update(indexable, context, context.Index.Configuration);
         }
 
         internal SitecoreIndexableItem PrepareIndexableVersion(Item item, IProviderUpdateContext context)
@@ -444,18 +444,18 @@ namespace Jarstan.ContentSearch
             RebuildFromRoot(context, indexingOptions, CancellationToken.None);
         }
 
-        //TODO: Could be removed, hasn't changed from what is being overridden, just wanted to see this.
+        //TODO: Could be removed, hasn't changed from what is being overridden, just wanted to see 
         public override void RebuildFromRoot(IProviderUpdateContext context, IndexingOptions indexingOptions, CancellationToken cancellationToken)
         {
             Assert.ArgumentNotNull(context, "context");
-            if (!this.ShouldStartIndexing(indexingOptions))
+            if (!ShouldStartIndexing(indexingOptions))
                 return;
-            var indexableRoot = this.GetIndexableRoot();
+            var indexableRoot = GetIndexableRoot();
             Assert.IsNotNull(indexableRoot, "RebuildFromRoot: Unable to retrieve root item");
-            Assert.IsNotNull(this.DocumentOptions, "DocumentOptions");
-            context.Index.Locator.GetInstance<Sitecore.Abstractions.IEvent>().RaiseEvent("indexing:addingrecursive", context.Index.Name, indexableRoot.UniqueId, indexableRoot.AbsolutePath);
-            this.AddHierarchicalRecursive(indexableRoot, context, this.index.Configuration, cancellationToken);
-            context.Index.Locator.GetInstance<Sitecore.Abstractions.IEvent>().RaiseEvent("indexing:addedrecursive", context.Index.Name, indexableRoot.UniqueId, indexableRoot.AbsolutePath);
+            Assert.IsNotNull(DocumentOptions, "DocumentOptions");
+            context.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:addingrecursive", context.Index.Name, indexableRoot.UniqueId, indexableRoot.AbsolutePath);
+            AddHierarchicalRecursive(indexableRoot, context, index.Configuration, cancellationToken);
+            context.Index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:addedrecursive", context.Index.Name, indexableRoot.UniqueId, indexableRoot.AbsolutePath);
         }
 
         protected override SitecoreIndexableItem GetIndexable(IIndexableUniqueId indexableUniqueId)
@@ -473,7 +473,7 @@ namespace Jarstan.ContentSearch
             var sitecoreItemId = indexableId as SitecoreItemId;
             if (sitecoreItemId == null)
                 return false;
-            var database = Factory.GetDatabase(this.Database);
+            var database = Factory.GetDatabase(Database);
             Item item;
             using (new WriteCachesDisabler())
                 item = database.GetItem(sitecoreItemId);
@@ -494,7 +494,7 @@ namespace Jarstan.ContentSearch
                     Sitecore.Data.Version[] versionArray;
                     using (new WriteCachesDisabler())
                         versionArray = item2.Versions.GetVersionNumbers() ?? new Sitecore.Data.Version[0];
-                    if (Enumerable.All<Sitecore.Data.Version>((IEnumerable<Sitecore.Data.Version>)versionArray, (Func<Sitecore.Data.Version, bool>)(v => v.Number != itemUri.Version.Number)))
+                    if (Enumerable.All(versionArray, v => v.Number != itemUri.Version.Number))
                         item2 = null;
                 }
                 return item;
@@ -523,12 +523,12 @@ namespace Jarstan.ContentSearch
         public override SitecoreIndexableItem GetIndexableRoot()
         {
             using (new SecurityDisabler())
-                return this.RootItem;
+                return RootItem;
         }
 
         protected override IEnumerable<IIndexableId> GetIndexableChildrenIds(SitecoreIndexableItem parent)
         {
-            var childList = this.GetChildList(parent.Item);
+            var childList = GetChildList(parent.Item);
             if (childList.Count == 0)
                 return null;
             return Enumerable.Select(childList, (Func<Item, SitecoreItemId>)(i => i.ID));
@@ -536,7 +536,7 @@ namespace Jarstan.ContentSearch
 
         protected override IEnumerable<SitecoreIndexableItem> GetIndexableChildren(SitecoreIndexableItem parent)
         {
-            var childList = this.GetChildList(parent.Item);
+            var childList = GetChildList(parent.Item);
             if (childList.Count == 0)
                 return null;
             return Enumerable.Select(childList, (Func<Item, SitecoreIndexableItem>)(i => i));
@@ -554,8 +554,8 @@ namespace Jarstan.ContentSearch
             {
                 using (new WriteCachesDisabler())
                 {
-                    var language = LanguageManager.GetLanguage(culture.Name, this.RootItem.Database);
-                    return ItemManager.GetItem((indexableId as SitecoreItemId), language, Sitecore.Data.Version.Latest, this.RootItem.Database, SecurityCheck.Disable);
+                    var language = LanguageManager.GetLanguage(culture.Name, RootItem.Database);
+                    return ItemManager.GetItem((indexableId as SitecoreItemId), language, Sitecore.Data.Version.Latest, RootItem.Database, SecurityCheck.Disable);
                 }
             }
         }
@@ -575,7 +575,7 @@ namespace Jarstan.ContentSearch
                 return;
             ((IIndexableBuiltinFields)sitecoreIndexableItem).IsLatestVersion = false;
             sitecoreIndexableItem.IndexFieldStorageValueFormatter = context.Index.Configuration.IndexFieldStorageValueFormatter;
-            this.Operations.Update(sitecoreIndexableItem, context, this.index.Configuration);
+            Operations.Update(sitecoreIndexableItem, context, this.index.Configuration);
         }
     }
 }
