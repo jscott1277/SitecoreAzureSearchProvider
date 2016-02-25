@@ -1,31 +1,21 @@
-﻿using Sitecore.Search;
-using Jarstan.ContentSearch.Linq.Azure;
+﻿using Jarstan.ContentSearch.Linq.Azure;
 using Sitecore.ContentSearch.Linq.Common;
 using Sitecore.Abstractions;
-using Sitecore.ContentSearch;
 using Sitecore.ContentSearch.Diagnostics;
 using Sitecore.ContentSearch.Linq;
 using Sitecore.ContentSearch.Linq.Methods;
 using Sitecore.ContentSearch.Linq.Nodes;
-using Sitecore.ContentSearch.Linq.Parsing;
 using Sitecore.ContentSearch.Pipelines.GetFacets;
 using Sitecore.ContentSearch.Pipelines.ProcessFacets;
 using Sitecore.ContentSearch.Utilities;
 using Sitecore.Diagnostics;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
-using Lucene.Net.Analysis;
 using Microsoft.Azure.Search.Models;
 using Lucene.Net.Search;
-using System.Threading;
-using System.IO;
-using Lucene.Net.QueryParsers;
-using System.Text.RegularExpressions;
 using Jarstan.ContentSearch.Linq.Methods;
 using Jarstan.ContentSearch.Linq;
 using Jarstan.ContentSearch.SearchTypes;
@@ -54,8 +44,8 @@ namespace Jarstan.ContentSearch.AzureProvider
         : base(new AzureIndexParameters(context.Index.Configuration.IndexFieldStorageValueFormatter, context.Index.Configuration.VirtualFields, context.Index.FieldNameTranslator, (fieldName => context.Index.Configuration.FieldMap.GetFieldConfiguration(fieldName) as IAzureSearchFieldConfiguration), executionContexts, context.Index.Configuration.FieldMap, context.ConvertQueryDatesToUtc))
         {
             Assert.ArgumentNotNull(context, "context");
-            this.settings = context.Index.Locator.GetInstance<IContentSearchConfigurationSettings>();
-            this.pipeline = context.Index.Locator.GetInstance<ICorePipeline>();
+            settings = context.Index.Locator.GetInstance<IContentSearchConfigurationSettings>();
+            pipeline = context.Index.Locator.GetInstance<ICorePipeline>();
             this.context = context;
         }
 
@@ -63,37 +53,37 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             if (EnumerableLinq.ShouldExecuteEnumerableLinqQuery(query))
                 return EnumerableLinq.ExecuteEnumerableLinqQuery<TResult>(query);
-            if (!this.DoExecuteSearch(query))
-                return this.ExecuteScalarMethod<TResult>(query);
+            if (!DoExecuteSearch(query))
+                return ExecuteScalarMethod<TResult>(query);
             if (typeof(TResult).IsGenericType && typeof(TResult).GetGenericTypeDefinition() == typeof(SearchResults<>))
             {
-                var topDocs = this.ExecuteQueryAgainstAzure(query);
-                Type type = typeof(TResult).GetGenericArguments()[0];
-                MethodInfo methodInfo1 = this.GetType().GetMethod("ApplySearchMethods", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
-                MethodInfo methodInfo2 = this.GetType().GetMethod("ApplyScalarMethods", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(typeof(TResult), type);
-                object obj = methodInfo1.Invoke((object)this, new object[2]
+                var topDocs = ExecuteQueryAgainstAzure(query);
+                var type = typeof(TResult).GetGenericArguments()[0];
+                var methodInfo1 = GetType().GetMethod("ApplySearchMethods", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(type);
+                var methodInfo2 = GetType().GetMethod("ApplyScalarMethods", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(typeof(TResult), type);
+                var obj = methodInfo1.Invoke(this, new object[2]
                 {
                   query,
                   topDocs
                 });
-                return (TResult)methodInfo2.Invoke((object)this, new object[3]
+                return (TResult)methodInfo2.Invoke(this, new object[3]
                 {
                     query,
                     obj,
                     topDocs
                 });
             }
-            var topDocs1 = this.ExecuteQueryAgainstAzure(query);
-            AzureSearchResults<TResult> processedResults = this.ApplySearchMethods<TResult>(query, topDocs1);
-            return this.ApplyScalarMethods<TResult, TResult>(query, processedResults, topDocs1);
+            var topDocs1 = ExecuteQueryAgainstAzure(query);
+            var processedResults = ApplySearchMethods<TResult>(query, topDocs1);
+            return ApplyScalarMethods<TResult, TResult>(query, processedResults, topDocs1);
         }
 
         public override IEnumerable<TElement> FindElements<TElement>(AzureQuery query)
         {
-            if (EnumerableLinq.ShouldExecuteEnumerableLinqQuery((IQuery)query))
-                return EnumerableLinq.ExecuteEnumerableLinqQuery<IEnumerable<TElement>>((IQuery)query);
-            var searchHits = this.ExecuteQueryAgainstAzure(query);
-            return this.ApplySearchMethods<TElement>(query, searchHits).GetSearchResults();
+            if (EnumerableLinq.ShouldExecuteEnumerableLinqQuery(query))
+                return EnumerableLinq.ExecuteEnumerableLinqQuery<IEnumerable<TElement>>(query);
+            var searchHits = ExecuteQueryAgainstAzure(query);
+            return ApplySearchMethods<TElement>(query, searchHits).GetSearchResults();
         }
 
         protected virtual Sort GetSorting(AzureQuery query)
@@ -102,16 +92,16 @@ namespace Jarstan.ContentSearch.AzureProvider
             Sort sort = null;
             if (query.Methods != null)
             {
-                SortField[] sortFieldArray = Enumerable.ToArray(Enumerable.Reverse(Enumerable.Select(Enumerable.Where(query.Methods, m => m.MethodType == QueryMethodType.OrderBy), (m => new SortField(((OrderByMethod)m).Field, this.GetSortFieldType((OrderByMethod)m), ((OrderByMethod)m).SortDirection == SortDirection.Descending)))));
+                var sortFieldArray = Enumerable.ToArray(Enumerable.Reverse(Enumerable.Select(Enumerable.Where(query.Methods, m => m.MethodType == QueryMethodType.OrderBy), (m => new SortField(((OrderByMethod)m).Field, GetSortFieldType((OrderByMethod)m), ((OrderByMethod)m).SortDirection == SortDirection.Descending)))));
                 if (sortFieldArray.Length > 0)
                 {
                     sort = new Sort(sortFieldArray);
-                    if (this.settings.EnableSearchDebug())
+                    if (settings.EnableSearchDebug())
                     {
-                        StringBuilder stringBuilder = new StringBuilder();
-                        foreach (SortField sortField in sortFieldArray)
+                        var stringBuilder = new StringBuilder();
+                        foreach (var sortField in sortFieldArray)
                             stringBuilder.Append(sortField.Field.Replace("sortfield", string.Empty) + " ");
-                        SearchLog.Log.Debug(string.Format("Sorting Azure query by{0}", (object)stringBuilder), (Exception)null);
+                        SearchLog.Log.Debug(string.Format("Sorting Azure query by{0}", stringBuilder), null);
                     }
                 }
             }
@@ -120,23 +110,21 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private AzureSearchResults<TElement> ApplySearchMethods<TElement>(AzureQuery query, DocumentSearchResult searchHits)
         {
-            List<QueryMethod> list = query.Methods != null ? new List<QueryMethod>(query.Methods) : new List<QueryMethod>();
+            var list = query.Methods != null ? new List<QueryMethod>(query.Methods) : new List<QueryMethod>();
             list.Reverse();
             SelectMethod selectMethod = null;
-            foreach (QueryMethod queryMethod in list)
+            foreach (var queryMethod in list)
             {
                 if (queryMethod.MethodType == QueryMethodType.Select)
                     selectMethod = (SelectMethod)queryMethod;
             }
             int startIndex = 0;
             int endIndex = searchHits.Results.Count - 1;
-            return new AzureSearchResults<TElement>(this.context, query, searchHits, startIndex, endIndex, selectMethod, query.ExecutionContexts, query.VirtualFieldProcessors, this.FieldNameTranslator);
+            return new AzureSearchResults<TElement>(context, query, searchHits, startIndex, endIndex, selectMethod, query.ExecutionContexts, query.VirtualFieldProcessors, FieldNameTranslator);
         }
 
         private bool DoExecuteSearch(AzureQuery query)
         {
-            //return Enumerable.First(query.Methods).MethodType != QueryMethodType.GetFacets;
-
             var retVal = true;
             if (Enumerable.First(query.Methods).MethodType == QueryMethodType.GetFacets)
                 retVal = false;
@@ -153,7 +141,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private TResult ApplyScalarMethods<TResult, TDocument>(AzureQuery query, AzureSearchResults<TDocument> processedResults, DocumentSearchResult results)
         {
-            QueryMethod queryMethod = query.Methods.FirstOrDefault();
+            var queryMethod = query.Methods.FirstOrDefault();
             object obj;
             switch (queryMethod.MethodType)
             {
@@ -166,7 +154,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                         switch (customMethod.CustomMethodType)
                         {
                             case Linq.Nodes.CustomQueryMethodTypes.GetHightlights:
-                                obj = this.ExecuteGetHighlightResults(query);
+                                obj = ExecuteGetHighlightResults(query);
                                 break;
                         }
                     }
@@ -195,10 +183,10 @@ namespace Jarstan.ContentSearch.AzureProvider
                     obj = !((SingleMethod)queryMethod).AllowDefaultValue ? processedResults.Single() : processedResults.SingleOrDefault();
                     break;
                 case QueryMethodType.GetResults:
-                    obj = this.ExecuteGetResults<TDocument>(query, processedResults, results);
+                    obj = ExecuteGetResults<TDocument>(query, processedResults, results);
                     break;
                 case QueryMethodType.GetFacets:
-                    obj = this.ExecuteGetFacets(query);
+                    obj = ExecuteGetFacets(query);
                     break;
                 default:
                     throw new InvalidOperationException("Invalid query method: " + queryMethod.MethodType);
@@ -208,9 +196,9 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private TResult ExecuteScalarMethod<TResult>(AzureQuery query)
         {
-            QueryMethod queryMethod = Enumerable.First(query.Methods);
+            var queryMethod = Enumerable.First(query.Methods);
             if (queryMethod.MethodType == QueryMethodType.GetFacets)
-                return (TResult)Convert.ChangeType(this.ExecuteGetFacets(query), typeof(TResult));
+                return (TResult)Convert.ChangeType(ExecuteGetFacets(query), typeof(TResult));
 
             var customMethod = queryMethod as CustomMethod;
             if (customMethod != null)
@@ -218,7 +206,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                 switch (customMethod.CustomMethodType)
                 {
                     case Linq.Nodes.CustomQueryMethodTypes.GetHightlights:
-                        return (TResult)Convert.ChangeType(this.ExecuteGetHighlightResults(query), typeof(TResult));
+                        return (TResult)Convert.ChangeType(ExecuteGetHighlightResults(query), typeof(TResult));
                     default:
                         throw new InvalidOperationException("Invalid query method: " + customMethod.CustomMethodType);
                 }
@@ -232,35 +220,35 @@ namespace Jarstan.ContentSearch.AzureProvider
             var searchHits = processedResults.GetSearchHits();
             Sitecore.ContentSearch.Linq.FacetResults facets = null;
             if (query.FacetQueries != null && query.FacetQueries.Count > 0)
-                facets = this.ExecuteGetFacets(query);
+                facets = ExecuteGetFacets(query);
             return new SearchResults<TDocument>(searchHits, (int)results.Count, facets);
         }
 
         private Sitecore.ContentSearch.Linq.FacetResults ExecuteGetFacets(AzureQuery query)
         {
-            AzureQuery query1 = query;
-            List<FacetQuery> list = new List<FacetQuery>((IEnumerable<FacetQuery>)query.FacetQueries);
-            IEnumerable<FacetQuery> facetQueries = GetFacetsPipeline.Run(this.pipeline, new GetFacetsArgs((IQueryable)null, (IEnumerable<FacetQuery>)query.FacetQueries, (IDictionary<string, IVirtualFieldProcessor>)this.context.Index.Configuration.VirtualFields, (FieldNameTranslator)this.context.Index.FieldNameTranslator)).FacetQueries;
-            Dictionary<string, ICollection<KeyValuePair<string, int>>> facets = new Dictionary<string, ICollection<KeyValuePair<string, int>>>();
-            foreach (FacetQuery facetQuery in facetQueries)
+            var query1 = query;
+            var list = new List<FacetQuery>(query.FacetQueries);
+            var facetQueries = GetFacetsPipeline.Run(pipeline, new GetFacetsArgs(null, query.FacetQueries, context.Index.Configuration.VirtualFields, context.Index.FieldNameTranslator)).FacetQueries;
+            var facets = new Dictionary<string, ICollection<KeyValuePair<string, int>>>();
+            foreach (var facetQuery in facetQueries)
             {
-                foreach (KeyValuePair<string, ICollection<KeyValuePair<string, int>>> keyValuePair in (IEnumerable<KeyValuePair<string, ICollection<KeyValuePair<string, int>>>>)this.GetFacets(query1, facetQuery.FieldNames, new int?(1), Enumerable.Cast<string>((IEnumerable)facetQuery.FilterValues), new bool?(), (string)null, facetQuery.MinimumResultCount))
+                foreach (var keyValuePair in GetFacets(query1, facetQuery.FieldNames, new int?(1), Enumerable.Cast<string>(facetQuery.FilterValues), new bool?(), null, facetQuery.MinimumResultCount))
                     facets[facetQuery.CategoryName] = keyValuePair.Value;
             }
-            IDictionary<string, ICollection<KeyValuePair<string, int>>> dictionary = ProcessFacetsPipeline.Run(this.pipeline, new ProcessFacetsArgs(facets, (IEnumerable<FacetQuery>)query.FacetQueries, (IEnumerable<FacetQuery>)list, (IDictionary<string, IVirtualFieldProcessor>)this.context.Index.Configuration.VirtualFields, (FieldNameTranslator)this.context.Index.FieldNameTranslator));
-            foreach (FacetQuery facetQuery in list)
+            var dictionary = ProcessFacetsPipeline.Run(pipeline, new ProcessFacetsArgs(facets, query.FacetQueries, list, context.Index.Configuration.VirtualFields, context.Index.FieldNameTranslator));
+            foreach (var facetQuery in list)
             {
-                FacetQuery originalQuery = facetQuery;
-                if (originalQuery.FilterValues != null && Enumerable.Any<object>(originalQuery.FilterValues) && dictionary.ContainsKey(originalQuery.CategoryName))
+                var originalQuery = facetQuery;
+                if (originalQuery.FilterValues != null && Enumerable.Any(originalQuery.FilterValues) && dictionary.ContainsKey(originalQuery.CategoryName))
                 {
-                    ICollection<KeyValuePair<string, int>> collection = dictionary[originalQuery.CategoryName];
-                    dictionary[originalQuery.CategoryName] = (ICollection<KeyValuePair<string, int>>)Enumerable.ToList<KeyValuePair<string, int>>(Enumerable.Where<KeyValuePair<string, int>>((IEnumerable<KeyValuePair<string, int>>)collection, (Func<KeyValuePair<string, int>, bool>)(cv => Enumerable.Contains<object>(originalQuery.FilterValues, (object)cv.Key))));
+                    var collection = dictionary[originalQuery.CategoryName];
+                    dictionary[originalQuery.CategoryName] = Enumerable.ToList(Enumerable.Where(collection, (cv => Enumerable.Contains(originalQuery.FilterValues, cv.Key))));
                 }
             }
             var facetResults = new Sitecore.ContentSearch.Linq.FacetResults();
-            foreach (KeyValuePair<string, ICollection<KeyValuePair<string, int>>> keyValuePair in (IEnumerable<KeyValuePair<string, ICollection<KeyValuePair<string, int>>>>)dictionary)
+            foreach (var keyValuePair in dictionary)
             {
-                IEnumerable<FacetValue> values = Enumerable.Select<KeyValuePair<string, int>, FacetValue>((IEnumerable<KeyValuePair<string, int>>)keyValuePair.Value, (Func<KeyValuePair<string, int>, FacetValue>)(v => new FacetValue(v.Key, v.Value)));
+                IEnumerable<FacetValue> values = Enumerable.Select(keyValuePair.Value, v => new FacetValue(v.Key, v.Value));
                 facetResults.Categories.Add(new FacetCategory(keyValuePair.Key, values));
             }
             return facetResults;
@@ -275,8 +263,8 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private IDictionary<string, ICollection<KeyValuePair<string, int>>> GetFacets(AzureQuery query, IEnumerable<string> facetFields, int? minResultCount, IEnumerable<string> filters, bool? sort, string prefix, int? limit)
         {
-            Assert.ArgumentNotNull((object)query, "query");
-            Assert.ArgumentNotNull((object)facetFields, "facetFields");
+            Assert.ArgumentNotNull(query, "query");
+            Assert.ArgumentNotNull(facetFields, "facetFields");
             
             SearchLog.Log.Info(string.Format("GetFacets : {0} : {1}{2}", string.Join(",", facetFields), query, filters != null ? (" Filters: " + string.Join(",", filters)) : string.Empty), null);
             var dictionary = new Dictionary<string, ICollection<KeyValuePair<string, int>>>();
@@ -295,28 +283,30 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private DocumentSearchResult ExecuteQueryAgainstAzure(AzureQuery query, IEnumerable<string> facetFields = null, IEnumerable<string> highlightFields = null)
         {
-            if (this.settings.EnableSearchDebug())
+            if (settings.EnableSearchDebug())
             {
-                StringBuilder stringBuilder = new StringBuilder();
-                stringBuilder.AppendLine("Executing azure query: " + (object)query);
-                foreach (QueryMethod queryMethod in query.Methods)
-                    stringBuilder.AppendLine("    - " + (object)queryMethod);
+                var stringBuilder = new StringBuilder();
+                stringBuilder.AppendLine("Executing azure query: " + query);
+                foreach (var queryMethod in query.Methods)
+                    stringBuilder.AppendLine("    - " + queryMethod);
                 stringBuilder.AppendLine();
                 stringBuilder.AppendLine(AzureQueryLogger.Trace(query.Query));
                 stringBuilder.AppendLine("Rewritten Lucene Query:");
                 stringBuilder.AppendLine();
-                //stringBuilder.AppendLine(AzureQueryLogger.Trace(query.Query.Rewrite(Enumerable.First<IAzureProviderSearchable>(this.context.Searchables).CreateSearcher(AzureIndexAccess.ReadOnlyCached).IndexReader)));
-                SearchLog.Log.Debug(stringBuilder.ToString(), (Exception)null);
+                //stringBuilder.AppendLine(AzureQueryLogger.Trace(query.Query.Rewrite(Enumerable.First<IAzureProviderSearchable>(context.Searchables).CreateSearcher(AzureIndexAccess.ReadOnlyCached).IndexReader)));
+                SearchLog.Log.Debug(stringBuilder.ToString(), null);
             }
 
-            var getResultsMethod = Enumerable.FirstOrDefault<QueryMethod>((IEnumerable<QueryMethod>)query.Methods, (Func<QueryMethod, bool>)(m => m.MethodType == QueryMethodType.GetResults)) as GetResultsMethod;
+            var getResultsMethod = Enumerable.FirstOrDefault(query.Methods, m => m.MethodType == QueryMethodType.GetResults) as GetResultsMethod;
             bool trackDocScores = getResultsMethod != null && (getResultsMethod.Options & GetResultsOptions.GetScores) == GetResultsOptions.GetScores;
 
-            var indexClient = ((AzureIndex)this.context.Index).AzureSearchClient;
+            var indexClient = ((AzureIndex)context.Index).AzureSearchClient;
             var searchParams = new SearchParameters();
+            searchParams.IncludeTotalResultCount = true;
+            searchParams.SearchMode = SearchMode.Any;
+            searchParams.QueryType = QueryType.Full;
 
-            //Filter filter = (Filter)null;
-            var sorting = this.GetSorting(query);
+            var sorting = GetSorting(query);
             if (sorting != null)
             {
                 searchParams.OrderBy = new List<string>();
@@ -351,7 +341,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                 }
             }
 
-            //var weight = this.context.Searcher.CreateWeight(query.Query);
+            //var weight = context.Searcher.CreateWeight(query.Query);
             
             var skip = GetSkip(query);
             if (skip.HasValue)
@@ -367,39 +357,17 @@ namespace Jarstan.ContentSearch.AzureProvider
             {
                 searchParams.Top = 1000; //Max Azure Search allows per request.
             }
-            searchParams.IncludeTotalResultCount = true;
-            searchParams.SearchMode = SearchMode.Any;
-            searchParams.QueryType = QueryType.Full;
+            
+            //TODO:  Figure out how to fix the '+=' issue in AzureQueryMapper
+            var strQuery = query.ToString().Replace("+-", "-");
 
-            var strQuery = query.ToString();
-
-            //TESTING
-            //if (strQuery.Contains("Query("))
-            //{
-            //    var SpecialCharactersRx = new Regex(@"\+|\-|\&\&|\|\||\(|\)|\{|\}|\[|\]|\^|\~|\*|\?|\:|\\|\/", RegexOptions.Compiled);
-            //    strQuery = SpecialCharactersRx.Replace(query.ToString(), @"\$0");
-            //}
-
-            //+(s_name:"Download Brochure" s_name:Download) +(+s_language:en +(+(s_name:/.*load/ s_name:/.*brochure/) +(+s_name:/Downl.*/ +s_name:/.*ownloa.*/)))
-
-            //+(s_language:en s_language:da) +(+s_templatename:Image +(-s_name:"Windows Phone Landscape"))
-            //+(s_language:en s_language:da) +(+s_templatename:Image -s_name:"Windows Phone Landscape")
-            //var secQuery = "+(s_language:en s_language:da) +s_templatename:Image -s_name:Windows";
-            //var secresponseTask = indexClient.Documents.SearchWithHttpMessagesAsync(secQuery, searchParams);
-            //secresponseTask.Wait();
-            //var secresponse = secresponseTask.Result.Body;
-            //END TESTING
-
-            //TODO:  Figure out how to fix this in AzureQueryMapper
-            strQuery = strQuery.Replace("+-", "-");
-
-            SearchLog.Log.Info(string.Format("ExecuteQueryAgainstAzure ({0}): {1} - Filter : {2}", this.context.Index.Name, strQuery, query.Filter != null ? query.Filter.ToString() : string.Empty), null);
+            SearchLog.Log.Info(string.Format("ExecuteQueryAgainstAzure ({0}): {1} - Filter : {2} - Facets : {3} - Highlights : {4}", context.Index.Name, strQuery, query.Filter != null ? query.Filter.ToString() : string.Empty, query.FacetQueries != null ? string.Join(", ", query.FacetQueries) : string.Empty , query.Highlights != null ? query.Highlights.ToString() : string.Empty), null);
 
             var responseTask = indexClient.Documents.SearchWithHttpMessagesAsync(strQuery, searchParams);
             responseTask.Wait();
             var response = responseTask.Result.Body;
 
-            if (this.settings.EnableSearchDebug())
+            if (settings.EnableSearchDebug())
             {
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.AppendFormat("fieldSortDoTrackScores: {0}\n", (trackDocScores ? 1 : 0));
@@ -422,14 +390,14 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private int GetMaxHits(AzureQuery query, int maxDoc)
         {
-            List<QueryMethod> list = query.Methods != null ? new List<QueryMethod>((IEnumerable<QueryMethod>)query.Methods) : new List<QueryMethod>();
+            var list = query.Methods != null ? new List<QueryMethod>(query.Methods) : new List<QueryMethod>();
             list.Reverse();
-            QueryMethod modifierScalarMethod = this.GetMaxHitsModifierScalarMethod(query.Methods);
+            var modifierScalarMethod = GetMaxHitsModifierScalarMethod(query.Methods);
             int num1 = 0;
             int num2 = maxDoc - 1;
             int num3 = num2;
             int num4 = num2;
-            foreach (QueryMethod queryMethod in list)
+            foreach (var queryMethod in list)
             {
                 switch (queryMethod.MethodType)
                 {
@@ -491,16 +459,16 @@ namespace Jarstan.ContentSearch.AzureProvider
             if (num4 == num2 && num1 == 0 && (modifierScalarMethod != null && modifierScalarMethod.MethodType == QueryMethodType.Count))
                 num2 = -1;
             int num6 = num2 + 1;
-            if (this.settings.EnableSearchDebug())
-                SearchLog.Log.Debug(string.Format("Max hits: {0}", (object)num6), (Exception)null);
+            if (settings.EnableSearchDebug())
+                SearchLog.Log.Debug(string.Format("Max hits: {0}", num6), null);
             return num6;
         }
 
         private QueryMethod GetMaxHitsModifierScalarMethod(List<QueryMethod> methods)
         {
             if (methods.Count == 0)
-                return (QueryMethod)null;
-            QueryMethod queryMethod = Enumerable.First<QueryMethod>((IEnumerable<QueryMethod>)methods);
+                return null;
+            var queryMethod = Enumerable.First(methods);
             switch (queryMethod.MethodType)
             {
                 case QueryMethodType.Any:
@@ -510,7 +478,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                 case QueryMethodType.Single:
                     return queryMethod;
                 default:
-                    return (QueryMethod)null;
+                    return null;
             }
         }
 
@@ -549,7 +517,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private void GetPaging(AzureQuery query, int totalHits, out int startIdx, out int endIdx)
         {
-            List<QueryMethod> list = query.Methods != null ? new List<QueryMethod>((IEnumerable<QueryMethod>)query.Methods) : new List<QueryMethod>();
+            var list = query.Methods != null ? new List<QueryMethod>(query.Methods) : new List<QueryMethod>();
             list.Reverse();
             startIdx = 0;
             endIdx = totalHits - 1;
@@ -589,9 +557,9 @@ namespace Jarstan.ContentSearch.AzureProvider
                         continue;
                 }
             }
-            if (!this.settings.EnableSearchDebug())
+            if (!settings.EnableSearchDebug())
                 return;
-            SearchLog.Log.Debug(string.Format("Indexes: {0} - {1}", (object)startIdx, (object)endIdx), (Exception)null);
+            SearchLog.Log.Debug(string.Format("Indexes: {0} - {1}", startIdx, endIdx), null);
         }
     }
 }
