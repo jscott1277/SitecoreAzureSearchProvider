@@ -56,7 +56,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
         public override AzureQuery MapQuery(IndexQuery query)
         {
             var mappingState = new AzureQueryMapperState(this.Parameters.ExecutionContexts);
-            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.Highlights, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
+            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.Highlights, mappingState.HighlightPreTag, mappingState.HighlightPostTag, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
         }
 
         protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapperState mappingState)
@@ -244,9 +244,11 @@ namespace Jarstan.ContentSearch.Linq.Azure
             methods.Add(new GetFacetsMethod());
         }
 
-        protected virtual void StripGetHighlightResults(GetHighlightResultsNode node, List<QueryMethod> methods)
+        protected virtual void StripGetHighlightResults(GetHighlightResultsNode node, List<QueryMethod> methods, AzureQueryMapperState state)
         {
             methods.Add(new GetHighlightResultsMethod());
+            state.HighlightPreTag = node.PreTag;
+            state.HighlightPostTag = node.PostTag;
         }
 
         protected virtual void StripFacetOn(FacetOnNode node, AzureQueryMapperState state)
@@ -408,7 +410,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
                                 StripHighlightOn((HighlightOnNode)customNode, mappingState);
                                 return this.Visit(((HighlightOnNode)customNode).SourceNode, mappingState);
                             case CustomQueryNodeTypes.GetHighlightResults:
-                                this.StripGetHighlightResults((GetHighlightResultsNode)node, mappingState.AdditionalQueryMethods);
+                                this.StripGetHighlightResults((GetHighlightResultsNode)node, mappingState.AdditionalQueryMethods, mappingState);
                                 return this.Visit(((GetHighlightResultsNode)customNode).SourceNode, mappingState);
                         }
                     }
@@ -994,6 +996,9 @@ namespace Jarstan.ContentSearch.Linq.Azure
             public List<IExecutionContext> ExecutionContexts { get; set; }
 
             public List<string> Highlights { get; set; }
+
+            public string HighlightPreTag { get; set; }
+            public string HighlightPostTag { get; set; }
 
             public AzureQueryMapperState(IEnumerable<IExecutionContext> executionContexts)
             {

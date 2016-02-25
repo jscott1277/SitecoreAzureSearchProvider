@@ -357,7 +357,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
         protected virtual QueryNode VisitGetHighlightResults(GetHighlightResultsNode node, AzureQueryOptimizerState state)
         {
-            return new GetHighlightResultsNode(this.Visit(node.SourceNode, state));
+            return new GetHighlightResultsNode(this.Visit(node.SourceNode, state), node.PreTag, node.PostTag);
         }
 
         protected virtual QueryNode VisitFacetPivotOn(FacetPivotOnNode node, AzureQueryOptimizerState state)

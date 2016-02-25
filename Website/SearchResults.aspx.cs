@@ -59,7 +59,7 @@ namespace Website
                     //var facets2 = queryable.FacetOn(o => o.TemplateName, 4, new List<string>() { "Jpeg", "Image" }).GetFacets();
 
                     //GetHighlightResults
-                    var results = queryable.HighlightOn(h => h.TemplateName).GetHighlightResults();
+                    var results = queryable.HighlightOn(h => h.TemplateName).GetHighlightResults("<b>", "</b>");
 
                     //Or
 

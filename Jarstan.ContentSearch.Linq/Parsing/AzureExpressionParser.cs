@@ -173,7 +173,17 @@ namespace Jarstan.ContentSearch.Linq.Parsing
 
         protected virtual QueryNode VisitGetHighlightResultsMethod(MethodCallExpression methodCall)
         {
-            return new GetHighlightResultsNode(this.Visit(methodCall.Arguments[0]));
+            string preTag = "<em>";
+            string postTag = "</em>";
+            if (methodCall.Arguments.Count == 3)
+            {
+                var queryNode = Visit(GetArgument(methodCall.Arguments, 1));
+                preTag = (string)((ConstantNode)queryNode).Value;
+
+                queryNode = Visit(GetArgument(methodCall.Arguments, 2));
+                postTag = (string)((ConstantNode)queryNode).Value;
+            }
+            return new GetHighlightResultsNode(this.Visit(methodCall.Arguments[0]), preTag, postTag);
         }
 
         protected virtual QueryNode VisitHighlightOnMethod(MethodCallExpression methodCall)

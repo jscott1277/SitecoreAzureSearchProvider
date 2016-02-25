@@ -342,6 +342,8 @@ namespace Jarstan.ContentSearch.AzureProvider
 
             if (highlightFields != null && highlightFields.Any())
             {
+                searchParams.HighlightPreTag = query.HighlightPreTag;
+                searchParams.HighlightPostTag = query.HighlightPostTag;
                 searchParams.HighlightFields = new List<string>();
                 foreach (var highlightField in highlightFields)
                 {

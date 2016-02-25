@@ -11,6 +11,9 @@ namespace Jarstan.ContentSearch.Linq
             protected set;
         }
 
+        public string PreTag { get; set; }
+        public string PostTag { get; set; }
+
         public override QueryNodeType NodeType
         {
             get
@@ -36,9 +39,11 @@ namespace Jarstan.ContentSearch.Linq
             }
         }
 
-        public GetHighlightResultsNode(QueryNode sourceNode)
+        public GetHighlightResultsNode(QueryNode sourceNode, string preTag, string postTag)
         {
             this.SourceNode = sourceNode;
+            this.PreTag = preTag;
+            this.PostTag = postTag;
         }
     }
 }
