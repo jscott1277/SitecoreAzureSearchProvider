@@ -7,11 +7,7 @@ using Sitecore.Data.Managers;
 using Sitecore.Diagnostics;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace Jarstan.ContentSearch
 {
@@ -39,161 +35,161 @@ namespace Jarstan.ContentSearch
         {
             Assert.ArgumentNotNull(indexable, "indexable");
             Assert.ArgumentNotNull(context, "context");
-            this.Options = context.Index.Configuration.DocumentOptions;
-            this.Indexable = indexable;
-            this.Index = context.Index;
-            this.Document = new T();
-            this.IsParallel = context.IsParallel;
-            this.ParallelOptions = context.ParallelOptions;
-            Item obj = (Item)(indexable as SitecoreIndexableItem);
+            Options = context.Index.Configuration.DocumentOptions;
+            Indexable = indexable;
+            Index = context.Index;
+            Document = new T();
+            IsParallel = context.IsParallel;
+            ParallelOptions = context.ParallelOptions;
+            var obj = (Item)(indexable as SitecoreIndexableItem);
             if (obj != null)
             {
-                this.IsTemplate = TemplateManager.IsTemplate(obj);
-                this.IsMedia = obj.Paths.IsMediaItem;
+                IsTemplate = TemplateManager.IsTemplate(obj);
+                IsMedia = obj.Paths.IsMediaItem;
             }
-            this.Settings = this.Index.Locator.GetInstance<IContentSearchConfigurationSettings>();
+            Settings = Index.Locator.GetInstance<IContentSearchConfigurationSettings>();
         }
 
         public virtual void AddItemFields()
         {
             try
             {
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => "AddItemFields start"));
-                if (this.Options.IndexAllFields)
-                    this.Indexable.LoadAllFields();
-                if (this.IsParallel)
+                VerboseLogging.CrawlingLogDebug(() => "AddItemFields start");
+                if (Options.IndexAllFields)
+                    Indexable.LoadAllFields();
+                if (IsParallel)
                 {
-                    ConcurrentQueue<Exception> exceptions = new ConcurrentQueue<Exception>();
-                    Parallel.ForEach<IIndexableDataField>(this.Indexable.Fields, this.ParallelOptions, (Action<IIndexableDataField>)(f =>
+                    var exceptions = new ConcurrentQueue<Exception>();
+                    Parallel.ForEach(Indexable.Fields, ParallelOptions, f =>
                     {
                         try
                         {
-                            this.CheckAndAddField(this.Indexable, f);
+                            CheckAndAddField(Indexable, f);
                         }
                         catch (Exception ex)
                         {
                             exceptions.Enqueue(ex);
                         }
-                    }));
+                    });
                     if (exceptions.Count > 0)
-                        throw new AggregateException((IEnumerable<Exception>)exceptions);
+                        throw new AggregateException(exceptions);
                 }
                 else
                 {
-                    foreach (IIndexableDataField field in this.Indexable.Fields)
-                        this.CheckAndAddField(this.Indexable, field);
+                    foreach (var field in Indexable.Fields)
+                        CheckAndAddField(Indexable, field);
                 }
             }
             finally
             {
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => "AddItemFields End"));
+                VerboseLogging.CrawlingLogDebug(() => "AddItemFields End");
             }
         }
 
         private void CheckAndAddField(IIndexable indexable, IIndexableDataField field)
         {
-            string name = field.Name;
-            if (this.IsTemplate && this.Options.HasExcludedTemplateFields && (this.Options.ExcludedTemplateFields.Contains(name) || this.Options.ExcludedTemplateFields.Contains(field.Id.ToString())))
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was excluded.", field.Id, (object)field.Name, (object)field.TypeKey)));
-            else if (this.IsMedia && this.Options.HasExcludedMediaFields && this.Options.ExcludedMediaFields.Contains(field.Name))
+            var name = field.Name;
+            if (IsTemplate && Options.HasExcludedTemplateFields && (Options.ExcludedTemplateFields.Contains(name) || Options.ExcludedTemplateFields.Contains(field.Id.ToString())))
+                VerboseLogging.CrawlingLogDebug(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was excluded.", field.Id, field.Name, field.TypeKey));
+            else if (IsMedia && Options.HasExcludedMediaFields && Options.ExcludedMediaFields.Contains(field.Name))
             {
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Media field was excluded.", field.Id, (object)field.Name, (object)field.TypeKey)));
+                VerboseLogging.CrawlingLogDebug(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Media field was excluded.", field.Id, field.Name, field.TypeKey));
             }
             else
             {
-                if (!this.Options.ExcludedFields.Contains(field.Id.ToString()))
+                if (!Options.ExcludedFields.Contains(field.Id.ToString()))
                 {
-                    if (!this.Options.ExcludedFields.Contains(name))
+                    if (!Options.ExcludedFields.Contains(name))
                     {
                         try
                         {
-                            if (this.Options.IndexAllFields)
+                            if (Options.IndexAllFields)
                             {
-                                using (new LanguageFallbackFieldSwitcher(new bool?(this.Index.EnableFieldLanguageFallback)))
+                                using (new LanguageFallbackFieldSwitcher(new bool?(Index.EnableFieldLanguageFallback)))
                                 {
-                                    this.AddField(field);
+                                    AddField(field);
                                     return;
                                 }
                             }
-                            else if (this.Options.IncludedFields.Contains(name) || this.Options.IncludedFields.Contains(field.Id.ToString()))
+                            else if (Options.IncludedFields.Contains(name) || Options.IncludedFields.Contains(field.Id.ToString()))
                             {
-                                using (new LanguageFallbackFieldSwitcher(new bool?(this.Index.EnableFieldLanguageFallback)))
+                                using (new LanguageFallbackFieldSwitcher(new bool?(Index.EnableFieldLanguageFallback)))
                                 {
-                                    this.AddField(field);
+                                    AddField(field);
                                     return;
                                 }
                             }
                             else
                             {
-                                VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was not included.", field.Id, (object)field.Name, (object)field.TypeKey)));
+                                VerboseLogging.CrawlingLogDebug(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was not included.", field.Id, field.Name, field.TypeKey));
                                 return;
                             }
                         }
                         catch (Exception ex)
                         {
-                            if (!this.Settings.StopOnCrawlFieldError())
+                            if (!Settings.StopOnCrawlFieldError())
                             {
-                                CrawlingLog.Log.Fatal(string.Format("Could not add field {1} : {2} for indexable {0}", (object)indexable.UniqueId, field.Id, (object)field.Name), ex);
+                                CrawlingLog.Log.Fatal(string.Format("Could not add field {1} : {2} for indexable {0}", indexable.UniqueId, field.Id, field.Name), ex);
                                 return;
                             }
                             throw;
                         }
                     }
                 }
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was excluded.", field.Id, (object)field.Name, (object)field.TypeKey)));
+                VerboseLogging.CrawlingLogDebug(() => string.Format("Skipping field id:{0}, name:{1}, typeKey:{2} - Field was excluded.", field.Id, field.Name, field.TypeKey));
             }
         }
 
         public virtual void AddSpecialField(string fieldName, object fieldValue, bool append = false)
         {
-            if (this.Options.HasExcludedFields && (this.IsTemplate && this.Options.HasExcludedTemplateFields && this.Options.ExcludedTemplateFields.Contains(fieldName) || this.IsMedia && this.Options.HasExcludedMediaFields && this.Options.ExcludedMediaFields.Contains(fieldName) || this.Options.ExcludedFields.Contains(fieldName)))
+            if (Options.HasExcludedFields && (IsTemplate && Options.HasExcludedTemplateFields && Options.ExcludedTemplateFields.Contains(fieldName) || IsMedia && Options.HasExcludedMediaFields && Options.ExcludedMediaFields.Contains(fieldName) || Options.ExcludedFields.Contains(fieldName)))
                 return;
-            this.AddField(fieldName, fieldValue, append);
+            AddField(fieldName, fieldValue, append);
         }
 
         public virtual void AddSpecialFields()
         {
             try
             {
-                VerboseLogging.CrawlingLogDebug((Func<string>)(() => "AddSpecialFields Start"));
-                this.AddSpecialField("s_key", this.Indexable.UniqueId.GetHashCode(), false);
-                this.AddSpecialField("s_uniqueid", (object)this.Indexable.UniqueId.ToString(), false);
-                this.AddSpecialField("s_datasource", (object)this.Indexable.DataSource.ToLowerInvariant(), false);
-                this.AddSpecialField("s_indexname", (object)this.Index.Name.ToLowerInvariant(), false);
-                IHashedIndexable hashedIndexable = this.Indexable as IHashedIndexable;
+                VerboseLogging.CrawlingLogDebug(() => "AddSpecialFields Start");
+                AddSpecialField("s_key", Indexable.UniqueId.GetHashCode(), false);
+                AddSpecialField("s_uniqueid", Indexable.UniqueId.ToString(), false);
+                AddSpecialField("s_datasource", Indexable.DataSource.ToLowerInvariant(), false);
+                AddSpecialField("s_indexname", Index.Name.ToLowerInvariant(), false);
+                var hashedIndexable = Indexable as IHashedIndexable;
                 if (hashedIndexable != null)
-                    this.AddSpecialField("s_hash", (object)hashedIndexable.GetIndexableHashCode(), false);
-                IDocumentTypedIndexable documentTypedIndexable = this.Indexable as IDocumentTypedIndexable;
+                    AddSpecialField("s_hash", hashedIndexable.GetIndexableHashCode(), false);
+                var documentTypedIndexable = Indexable as IDocumentTypedIndexable;
                 if (documentTypedIndexable != null)
-                    this.AddSpecialField("s_documenttype", documentTypedIndexable.DocumentType, false);
-                IIndexableBuiltinFields indexableBuiltinFields = this.Indexable as IIndexableBuiltinFields;
+                    AddSpecialField("s_documenttype", documentTypedIndexable.DocumentType, false);
+                var indexableBuiltinFields = Indexable as IIndexableBuiltinFields;
                 if (indexableBuiltinFields == null)
                     return;
-                this.AddSpecialField("s_database", (object)indexableBuiltinFields.Database, false);
-                this.AddSpecialField("s_language", (object)indexableBuiltinFields.Language, false);
-                this.AddSpecialField("s_template", indexableBuiltinFields.TemplateId, false);
-                this.AddSpecialField("s_parent", indexableBuiltinFields.Parent, false);
+                AddSpecialField("s_database", indexableBuiltinFields.Database, false);
+                AddSpecialField("s_language", indexableBuiltinFields.Language, false);
+                AddSpecialField("s_template", indexableBuiltinFields.TemplateId, false);
+                AddSpecialField("s_parent", indexableBuiltinFields.Parent, false);
                 if (indexableBuiltinFields.IsLatestVersion)
-                    this.AddSpecialField("s_latestversion", (object)true, false);
-                this.AddSpecialField("s_version", (object)indexableBuiltinFields.Version, false);
-                this.AddSpecialField("s_group", indexableBuiltinFields.Group, false);
+                    AddSpecialField("s_latestversion", true, false);
+                AddSpecialField("s_version", indexableBuiltinFields.Version, false);
+                AddSpecialField("s_group", indexableBuiltinFields.Group, false);
                 if (indexableBuiltinFields.IsClone)
-                    this.AddSpecialField("s_isclone", (object)true, false);
-                this.AddSpecialField("s_fullpath", (object)indexableBuiltinFields.FullPath, false);
-                if (this.Options.ExcludeAllSpecialFields)
+                    AddSpecialField("s_isclone", true, false);
+                AddSpecialField("s_fullpath", indexableBuiltinFields.FullPath, false);
+                if (Options.ExcludeAllSpecialFields)
                     return;
-                this.AddSpecialField("s_name", (object)indexableBuiltinFields.Name, false);
-                this.AddSpecialField("s_displayname", (object)indexableBuiltinFields.DisplayName, false);
-                this.AddSpecialField("s_creator", (object)indexableBuiltinFields.CreatedBy, false);
-                this.AddSpecialField("s_editor", (object)indexableBuiltinFields.UpdatedBy, false);
-                this.AddSpecialField("s_templatename", (object)indexableBuiltinFields.TemplateName, false);
-                this.AddSpecialField("s_created", (object)indexableBuiltinFields.CreatedDate, false);
-                this.AddSpecialField("s_updated", (object)indexableBuiltinFields.UpdatedDate, false);
-                this.AddSpecialField("s_path", indexableBuiltinFields.Paths, false);
-                this.AddSpecialField("s_content", indexableBuiltinFields.Name + " " + indexableBuiltinFields.DisplayName, false);
-                if (this.Options.Tags == null || this.Options.Tags.Length <= 0)
+                AddSpecialField("s_name", indexableBuiltinFields.Name, false);
+                AddSpecialField("s_displayname", indexableBuiltinFields.DisplayName, false);
+                AddSpecialField("s_creator", indexableBuiltinFields.CreatedBy, false);
+                AddSpecialField("s_editor", indexableBuiltinFields.UpdatedBy, false);
+                AddSpecialField("s_templatename", indexableBuiltinFields.TemplateName, false);
+                AddSpecialField("s_created", indexableBuiltinFields.CreatedDate, false);
+                AddSpecialField("s_updated", indexableBuiltinFields.UpdatedDate, false);
+                AddSpecialField("s_path", indexableBuiltinFields.Paths, false);
+                AddSpecialField("s_content", indexableBuiltinFields.Name + " " + indexableBuiltinFields.DisplayName, false);
+                if (Options.Tags == null || Options.Tags.Length <= 0)
                     return;
-                this.AddSpecialField("s_tags", this.Options.Tags, false);
+                AddSpecialField("s_tags", Options.Tags, false);
             }
             finally
             {
@@ -207,7 +203,7 @@ namespace Jarstan.ContentSearch
 
         public virtual string GetItemPath(Item item)
         {
-            Assert.ArgumentNotNull((object)item, "item");
+            Assert.ArgumentNotNull(item, "item");
             return IdHelper.ProcessGUIDs(item.Paths.LongID.Replace('/', ' '), true);
         }
 
