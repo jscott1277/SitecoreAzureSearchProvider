@@ -1,6 +1,7 @@
 ﻿using Sitecore.ContentSearch;
 using Sitecore.ContentSearch.Linq;
 using Jarstan.ContentSearch.SearchTypes;
+using Jarstan.ContentSearch.Linq;
 using Sitecore.Search;
 using System;
 using System.Collections.Generic;
@@ -50,12 +51,20 @@ namespace Website
                     //TODO:  Only first orderby is being honored, appears to be an Azure Search Bug....
                     queryable = queryable.OrderBy(o => o.Name).ThenByDescending(o => o.TemplateName).Take(10);
 
+                    
+
                     //GetFacets extension method support
                     var facets0 = queryable.FacetOn(o => o.TemplateName).GetFacets();
-                    var facets1 = queryable.FacetOn(o => o.TemplateName, 4).GetFacets();
-                    var facets2 = queryable.FacetOn(o => o.TemplateName, 4, new List<string>() { "Jpeg", "Image" }).GetFacets();
+                    //var facets1 = queryable.FacetOn(o => o.TemplateName, 4).GetFacets();
+                    //var facets2 = queryable.FacetOn(o => o.TemplateName, 4, new List<string>() { "Jpeg", "Image" }).GetFacets();
 
-                    var results = queryable.GetResults();
+                    //GetHighlightResults
+                    var results = queryable.HighlightOn(h => h.TemplateName).GetHighlightResults();
+
+                    //Or
+
+                    //GetResults
+                    //var results = queryable.GetResults();
                     gvResults.DataSource = results.Hits.Select(r => r.Document);
                     gvResults.DataBind();
                 }

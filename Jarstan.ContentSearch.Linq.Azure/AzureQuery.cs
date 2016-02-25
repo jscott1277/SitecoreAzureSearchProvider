@@ -21,15 +21,17 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
         public List<FacetQuery> FacetQueries { get; protected set; }
 
+        public List<string> Highlights { get; set; }
+
         public List<Tuple<string, ComparisonType, Analyzer>> UsedAnalyzers { get; protected set; }
 
         public List<IExecutionContext> ExecutionContexts { get; protected set; }
 
-        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers)
-         : this(query, filter, methods, virtualFieldProcessors, facetQueries, usedAnalyzers, (IEnumerable<IExecutionContext>)new List<IExecutionContext>(0))
+        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers)
+         : this(query, filter, methods, virtualFieldProcessors, facetQueries, highlights, usedAnalyzers, new List<IExecutionContext>(0))
         {
         }
-        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers, IEnumerable<IExecutionContext> executionContexts)
+        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers, IEnumerable<IExecutionContext> executionContexts)
         {
             this.Query = query;
             this.Filter = filter;
@@ -38,6 +40,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
             this.FacetQueries = Enumerable.ToList(facetQueries);
             this.UsedAnalyzers = Enumerable.ToList(Enumerable.Distinct(usedAnalyzers));
             this.ExecutionContexts = executionContexts != null ? Enumerable.ToList(executionContexts) : new List<IExecutionContext>(0);
+            this.Highlights = highlights;
         }
 
         public override string ToString()

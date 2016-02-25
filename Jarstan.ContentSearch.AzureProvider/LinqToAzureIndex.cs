@@ -26,6 +26,9 @@ using System.Threading;
 using System.IO;
 using Lucene.Net.QueryParsers;
 using System.Text.RegularExpressions;
+using Jarstan.ContentSearch.Linq.Methods;
+using Jarstan.ContentSearch.Linq;
+using Jarstan.ContentSearch.SearchTypes;
 
 namespace Jarstan.ContentSearch.AzureProvider
 {
@@ -117,7 +120,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private AzureSearchResults<TElement> ApplySearchMethods<TElement>(AzureQuery query, DocumentSearchResult searchHits)
         {
-            List<QueryMethod> list = query.Methods != null ? new List<QueryMethod>((IEnumerable<QueryMethod>)query.Methods) : new List<QueryMethod>();
+            List<QueryMethod> list = query.Methods != null ? new List<QueryMethod>(query.Methods) : new List<QueryMethod>();
             list.Reverse();
             SelectMethod selectMethod = null;
             foreach (QueryMethod queryMethod in list)
@@ -132,64 +135,101 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         private bool DoExecuteSearch(AzureQuery query)
         {
-            return Enumerable.First(query.Methods).MethodType != QueryMethodType.GetFacets;
+            //return Enumerable.First(query.Methods).MethodType != QueryMethodType.GetFacets;
+
+            var retVal = true;
+            if (Enumerable.First(query.Methods).MethodType == QueryMethodType.GetFacets)
+                retVal = false;
+
+            if (query.Methods.FirstOrDefault().MethodType == QueryMethodType.All)
+            {
+                var customMethod = query.Methods.FirstOrDefault() as CustomMethod;
+                if (customMethod != null)
+                    retVal = false;
+            }
+
+            return retVal;
         }
 
         private TResult ApplyScalarMethods<TResult, TDocument>(AzureQuery query, AzureSearchResults<TDocument> processedResults, DocumentSearchResult results)
         {
-            QueryMethod queryMethod = Enumerable.First<QueryMethod>((IEnumerable<QueryMethod>)query.Methods);
+            QueryMethod queryMethod = query.Methods.FirstOrDefault();
             object obj;
             switch (queryMethod.MethodType)
             {
                 case QueryMethodType.All:
-                    obj = (object)true;
+                    obj = true;
+                    //Check for CustomMethod
+                    var customMethod = queryMethod as CustomMethod;
+                    if (customMethod != null)
+                    {
+                        switch (customMethod.CustomMethodType)
+                        {
+                            case Linq.Nodes.CustomQueryMethodTypes.GetHightlights:
+                                obj = this.ExecuteGetHighlightResults(query);
+                                break;
+                        }
+                    }
                     break;
                 case QueryMethodType.Any:
                     obj = (processedResults.Any() ? 1 : 0);
                     break;
                 case QueryMethodType.Count:
-                    obj = Enumerable.Any<QueryMethod>((IEnumerable<QueryMethod>)query.Methods, (Func<QueryMethod, bool>)(m =>
+                    obj = query.Methods.Any(m =>
                     {
                         if (m.MethodType != QueryMethodType.Skip)
                             return m.MethodType == QueryMethodType.Take;
                         return true;
-                    })) ? (object)processedResults.Count() : results.Count;
+                    }) ? processedResults.Count() : results.Count;
                     break;
                 case QueryMethodType.ElementAt:
-                    obj = !((ElementAtMethod)queryMethod).AllowDefaultValue ? (object)processedResults.ElementAt(((ElementAtMethod)queryMethod).Index) : (object)processedResults.ElementAtOrDefault(((ElementAtMethod)queryMethod).Index);
+                    obj = !((ElementAtMethod)queryMethod).AllowDefaultValue ? processedResults.ElementAt(((ElementAtMethod)queryMethod).Index) : processedResults.ElementAtOrDefault(((ElementAtMethod)queryMethod).Index);
                     break;
                 case QueryMethodType.First:
-                    obj = !((FirstMethod)queryMethod).AllowDefaultValue ? (object)processedResults.First() : (object)processedResults.FirstOrDefault();
+                    obj = !((FirstMethod)queryMethod).AllowDefaultValue ? processedResults.First() : processedResults.FirstOrDefault();
                     break;
                 case QueryMethodType.Last:
-                    obj = !((LastMethod)queryMethod).AllowDefaultValue ? (object)processedResults.Last() : (object)processedResults.LastOrDefault();
+                    obj = !((LastMethod)queryMethod).AllowDefaultValue ? processedResults.Last() : processedResults.LastOrDefault();
                     break;
                 case QueryMethodType.Single:
-                    obj = !((SingleMethod)queryMethod).AllowDefaultValue ? (object)processedResults.Single() : (object)processedResults.SingleOrDefault();
+                    obj = !((SingleMethod)queryMethod).AllowDefaultValue ? processedResults.Single() : processedResults.SingleOrDefault();
                     break;
                 case QueryMethodType.GetResults:
-                    obj = (object)this.ExecuteGetResults<TDocument>(query, processedResults, results);
+                    obj = this.ExecuteGetResults<TDocument>(query, processedResults, results);
                     break;
                 case QueryMethodType.GetFacets:
-                    obj = (object)this.ExecuteGetFacets(query);
+                    obj = this.ExecuteGetFacets(query);
                     break;
                 default:
-                    throw new InvalidOperationException("Invalid query method: " + (object)queryMethod.MethodType);
+                    throw new InvalidOperationException("Invalid query method: " + queryMethod.MethodType);
             }
             return (TResult)Convert.ChangeType(obj, typeof(TResult));
         }
 
         private TResult ExecuteScalarMethod<TResult>(AzureQuery query)
         {
-            QueryMethod queryMethod = Enumerable.First<QueryMethod>((IEnumerable<QueryMethod>)query.Methods);
+            QueryMethod queryMethod = Enumerable.First(query.Methods);
             if (queryMethod.MethodType == QueryMethodType.GetFacets)
-                return (TResult)Convert.ChangeType((object)this.ExecuteGetFacets(query), typeof(TResult));
-            throw new InvalidOperationException("Invalid query method: " + (object)queryMethod.MethodType);
+                return (TResult)Convert.ChangeType(this.ExecuteGetFacets(query), typeof(TResult));
+
+            var customMethod = queryMethod as CustomMethod;
+            if (customMethod != null)
+            {
+                switch (customMethod.CustomMethodType)
+                {
+                    case Linq.Nodes.CustomQueryMethodTypes.GetHightlights:
+                        return (TResult)Convert.ChangeType(this.ExecuteGetHighlightResults(query), typeof(TResult));
+                    default:
+                        throw new InvalidOperationException("Invalid query method: " + customMethod.CustomMethodType);
+                }
+            }
+
+            throw new InvalidOperationException("Invalid query method: " + queryMethod.MethodType);
         }
 
         private SearchResults<TDocument> ExecuteGetResults<TDocument>(AzureQuery query, AzureSearchResults<TDocument> processedResults, DocumentSearchResult results)
         {
-            IEnumerable<SearchHit<TDocument>> searchHits = processedResults.GetSearchHits();
+            var searchHits = processedResults.GetSearchHits();
             Sitecore.ContentSearch.Linq.FacetResults facets = null;
             if (query.FacetQueries != null && query.FacetQueries.Count > 0)
                 facets = this.ExecuteGetFacets(query);
@@ -226,6 +266,13 @@ namespace Jarstan.ContentSearch.AzureProvider
             return facetResults;
         }
 
+        private HighlightSearchResults<AzureSearchResultItem> ExecuteGetHighlightResults(AzureQuery query)
+        {
+            var results = ExecuteQueryAgainstAzure(query, null, query.Highlights);
+            var hits = ApplySearchMethods<AzureSearchResultItem>(query, results).GetSearchHits();
+            return new HighlightSearchResults<AzureSearchResultItem>(hits, (int)results.Count);
+        }
+
         private IDictionary<string, ICollection<KeyValuePair<string, int>>> GetFacets(AzureQuery query, IEnumerable<string> facetFields, int? minResultCount, IEnumerable<string> filters, bool? sort, string prefix, int? limit)
         {
             Assert.ArgumentNotNull((object)query, "query");
@@ -246,7 +293,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             return dictionary;
         }
 
-        private DocumentSearchResult ExecuteQueryAgainstAzure(AzureQuery query, IEnumerable<string> facetFields = null)
+        private DocumentSearchResult ExecuteQueryAgainstAzure(AzureQuery query, IEnumerable<string> facetFields = null, IEnumerable<string> highlightFields = null)
         {
             if (this.settings.EnableSearchDebug())
             {
@@ -286,10 +333,19 @@ namespace Jarstan.ContentSearch.AzureProvider
 
             if (facetFields != null && facetFields.Any())
             {
+                searchParams.Facets = new List<string>();
                 foreach (var facetField in facetFields)
                 {
-                    searchParams.Facets = new List<string>();
                     searchParams.Facets.Add(facetField);
+                }
+            }
+
+            if (highlightFields != null && highlightFields.Any())
+            {
+                searchParams.HighlightFields = new List<string>();
+                foreach (var highlightField in highlightFields)
+                {
+                    searchParams.HighlightFields.Add(highlightField);
                 }
             }
 

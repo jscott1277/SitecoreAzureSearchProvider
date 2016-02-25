@@ -98,6 +98,19 @@ namespace Jarstan.ContentSearch.Linq.Azure
                     return this.VisitSelfJoin((SelfJoinNode)node, state);
                 case QueryNodeType.SelectMany:
                     return this.VisitSelectMany((SelectManyNode)node, state);
+                case QueryNodeType.Custom:
+                    var customNode = node as CustomNode;
+                    if (customNode != null)
+                    {
+                        switch (customNode.CustomNodeType)
+                        {
+                            case CustomQueryNodeTypes.HighlightOn:
+                                return this.VisitHighlightOn((HighlightOnNode)customNode, state);
+                            case CustomQueryNodeTypes.GetHighlightResults:
+                                return this.VisitGetHighlightResults((GetHighlightResultsNode)customNode, state);
+                        }
+                    }
+                    return node;
                 default:
                     return node;
             }
@@ -335,6 +348,16 @@ namespace Jarstan.ContentSearch.Linq.Azure
         protected virtual QueryNode VisitFacetOn(FacetOnNode node, AzureQueryOptimizerState state)
         {
             return (QueryNode)new FacetOnNode(this.Visit(node.SourceNode, state), node.Field, node.MinimumNumberOfDocuments, node.FilterValues);
+        }
+
+        protected virtual QueryNode VisitHighlightOn(HighlightOnNode node, AzureQueryOptimizerState state)
+        {
+            return new HighlightOnNode(this.Visit(node.SourceNode, state), node.Field);
+        }
+
+        protected virtual QueryNode VisitGetHighlightResults(GetHighlightResultsNode node, AzureQueryOptimizerState state)
+        {
+            return new GetHighlightResultsNode(this.Visit(node.SourceNode, state));
         }
 
         protected virtual QueryNode VisitFacetPivotOn(FacetPivotOnNode node, AzureQueryOptimizerState state)

@@ -8,6 +8,7 @@ using Sitecore.ContentSearch.Linq.Common;
 using Sitecore.ContentSearch.Linq.Parsing;
 using Jarstan.ContentSearch.Linq.Azure;
 using Sitecore.ContentSearch;
+using Jarstan.ContentSearch.Linq.Parsing;
 
 namespace Jarstan.ContentSearch.Linq.Azure
 {
@@ -33,13 +34,29 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
         protected override IIndexValueFormatter ValueFormatter { get; }
 
-        //public override IQueryable<TItem> GetQueryable()
-        //{
-        //    IQueryable<TItem> queryable = new GenericQueryable<TItem, AzureQuery>(this, this.QueryMapper, this.QueryOptimizer, this.FieldNameTranslator);
-        //    //foreach (IPredefinedQueryAttribute predefinedQueryAttribute in Enumerable.ToList(Enumerable.SelectMany<Type, IPredefinedQueryAttribute>(this.GetTypeInheritance(typeof(TItem)), (Func<Type, IEnumerable<IPredefinedQueryAttribute>>)(t => Enumerable.Cast<IPredefinedQueryAttribute>((IEnumerable)t.GetCustomAttributes(typeof(IPredefinedQueryAttribute), true))))))
-        //    //    queryable = predefinedQueryAttribute.ApplyFilter<TItem>(queryable, this.ValueFormatter);
-        //    return queryable;
-        //}
+        public override IQueryable<TItem> GetQueryable()
+        {
+            IQueryable<TItem> queryable = new AzureGenericQueryable<TItem, AzureQuery>(this, QueryMapper, QueryOptimizer, FieldNameTranslator);
+            (queryable as IHasTraceWriter).TraceWriter = ((IHasTraceWriter)this).TraceWriter;
+            var list = GetTypeInheritance(typeof(TItem)).SelectMany((Type t) => t.GetCustomAttributes(typeof(IPredefinedQueryAttribute), true).Cast<IPredefinedQueryAttribute>()).ToList();
+            foreach (IPredefinedQueryAttribute current in list)
+            {
+                queryable = current.ApplyFilter(queryable, ValueFormatter);
+            }
+            return queryable;
+        }
+
+        private IEnumerable<Type> GetTypeInheritance(Type type)
+        {
+            yield return type;
+            Type baseType = type.BaseType;
+            while (baseType != null)
+            {
+                yield return baseType;
+                baseType = baseType.BaseType;
+            }
+            yield break;
+        }
 
         public override TResult Execute<TResult>(AzureQuery query)
         {

@@ -20,6 +20,11 @@ namespace Jarstan.ContentSearch.AzureProvider
             return document.Keys;
         }
 
+        protected override void MapFieldValuesToType<TElement>(IDictionary<string, object> fieldValues, TElement result, DocumentTypeMapInfo documentTypeMapInfo)
+        {
+            base.MapFieldValuesToType<TElement>(fieldValues, result, documentTypeMapInfo);
+        }
+
         protected override IDictionary<string, object> ReadDocumentFields(Document document, IEnumerable<string> fieldNames, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors)
         {
             Assert.ArgumentNotNull(document, "document");

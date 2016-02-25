@@ -128,6 +128,10 @@
       <Project>{c6d9c297-f714-4dc3-885c-4a58ca5f919b}</Project>
       <Name>Jarstan.ContentSearch.AzureProvider</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Jarstan.ContentSearch.Linq\Jarstan.ContentSearch.Linq.csproj">
+      <Project>{4b1635dc-d146-4212-816b-087e87f961cd}</Project>
+      <Name>Jarstan.ContentSearch.Linq</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Jarstan.ContentSearch\Jarstan.ContentSearch.csproj">
       <Project>{aa50051d-ecab-4eef-8eac-2466f48410c5}</Project>
       <Name>Jarstan.ContentSearch</Name>

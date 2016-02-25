@@ -10,6 +10,7 @@ using Sitecore.ContentSearch.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Jarstan.ContentSearch.Linq;
 
 namespace Jarstan.ContentSearch.AzureProvider
 {
@@ -85,12 +86,23 @@ namespace Jarstan.ContentSearch.AzureProvider
             return Enumerable.ElementAt<TElement>(this.GetSearchResults(), index);
         }
 
-        public IEnumerable<SearchHit<TElement>> GetSearchHits()
+        public IEnumerable<AzureSearchHit<TElement>> GetSearchHits()
         {
             for (int idx = this.startIndex; idx <= this.endIndex; ++idx)
             {
                 //Document doc = this.context.Searcher.Doc(this.searchHits.ScoreDocs[idx].Doc, (FieldSelector)this.fieldSelector);
-                var doc = this.searchHits.Results[idx].Document;
+                var result = this.searchHits.Results[idx];
+                var doc = result.Document;
+
+                var highlightResults = new List<HighlightResult>();
+                if (result.Highlights != null)
+                {
+                    foreach (var highlight in result.Highlights)
+                    {
+                        highlightResults.Add(new HighlightResult(highlight.Key, highlight.Value));
+                    }
+                }
+
                 if (!this.context.SecurityOptions.HasFlag((Enum)SearchSecurityOptions.DisableSecurityCheck))
                 {
                     object secTokenFieldValue;
@@ -103,11 +115,13 @@ namespace Jarstan.ContentSearch.AzureProvider
                     {
                         bool isExcluded = OutboundIndexFilterPipeline.CheckItemSecurity(this.context.Index.Locator.GetInstance<ICorePipeline>(), this.context.Index.Locator.GetInstance<IAccessRight>(), new OutboundIndexFilterArgs(secToken, dataSource));
                         if (!isExcluded)
-                            yield return new SearchHit<TElement>(0f, this.mapper.MapToType<TElement>(doc, this.selectMethod, this.virtualFieldProcessors, this.executionContexts, this.context.SecurityOptions));
+                            yield return new AzureSearchHit<TElement>(0f, this.mapper.MapToType<TElement>(doc, this.selectMethod, this.virtualFieldProcessors, this.executionContexts, this.context.SecurityOptions), highlightResults);
                     }
                 }
                 else
-                    yield return new SearchHit<TElement>(0f, this.mapper.MapToType<TElement>(doc, this.selectMethod, this.virtualFieldProcessors, this.executionContexts, this.context.SecurityOptions));
+                {
+                    yield return new AzureSearchHit<TElement>(0f, this.mapper.MapToType<TElement>(doc, this.selectMethod, this.virtualFieldProcessors, this.executionContexts, this.context.SecurityOptions), highlightResults);
+                }
             }
         }
 

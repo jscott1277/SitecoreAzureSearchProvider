@@ -21,6 +21,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Jarstan.ContentSearch.Linq.Lucene.Queries;
+using Jarstan.ContentSearch.Linq.Methods;
 
 namespace Jarstan.ContentSearch.Linq.Azure
 {
@@ -55,7 +56,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
         public override AzureQuery MapQuery(IndexQuery query)
         {
             var mappingState = new AzureQueryMapperState(this.Parameters.ExecutionContexts);
-            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
+            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.Highlights, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
         }
 
         protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapperState mappingState)
@@ -243,6 +244,11 @@ namespace Jarstan.ContentSearch.Linq.Azure
             methods.Add(new GetFacetsMethod());
         }
 
+        protected virtual void StripGetHighlightResults(GetHighlightResultsNode node, List<QueryMethod> methods)
+        {
+            methods.Add(new GetHighlightResultsMethod());
+        }
+
         protected virtual void StripFacetOn(FacetOnNode node, AzureQueryMapperState state)
         {
             this.ProcessAsVirtualField(node.Field, state);
@@ -392,9 +398,30 @@ namespace Jarstan.ContentSearch.Linq.Azure
                 case QueryNodeType.SelectMany:
                     this.StripSelectMany((SelectManyNode)node, mappingState);
                     return null;
+                case QueryNodeType.Custom:
+                    var customNode = node as CustomNode;
+                    if (customNode != null)
+                    {
+                        switch(customNode.CustomNodeType)
+                        {
+                            case CustomQueryNodeTypes.HighlightOn:
+                                StripHighlightOn((HighlightOnNode)customNode, mappingState);
+                                return this.Visit(((HighlightOnNode)customNode).SourceNode, mappingState);
+                            case CustomQueryNodeTypes.GetHighlightResults:
+                                this.StripGetHighlightResults((GetHighlightResultsNode)node, mappingState.AdditionalQueryMethods);
+                                return this.Visit(((GetHighlightResultsNode)customNode).SourceNode, mappingState);
+                        }
+                    }
+                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", node.NodeType));
                 default:
-                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", (object)node.NodeType));
+                    throw new NotSupportedException(string.Format("The query node type '{0}' is not supported in this context.", node.NodeType));
             }
+        }
+
+        protected virtual void StripHighlightOn(HighlightOnNode node, AzureQueryMapperState state)
+        {
+            ProcessAsVirtualField(node.Field, state);
+            state.Highlights.Add(node.Field);
         }
 
         protected virtual Query VisitField(FieldNode node, AzureQueryMapperState mappingState)
@@ -966,6 +993,8 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
             public List<IExecutionContext> ExecutionContexts { get; set; }
 
+            public List<string> Highlights { get; set; }
+
             public AzureQueryMapperState(IEnumerable<IExecutionContext> executionContexts)
             {
                 this.AdditionalQueryMethods = new List<QueryMethod>();
@@ -974,6 +1003,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
                 this.UsedAnalyzers = new List<Tuple<string, ComparisonType, Analyzer>>();
                 this.ExecutionContexts = executionContexts != null ? Enumerable.ToList(executionContexts) : new List<IExecutionContext>();
                 this.FilterQueries = new FiltersListQuery();
+                this.Highlights = new List<string>();
             }
         }
     }
