@@ -8,13 +8,11 @@ using Sitecore.ContentSearch.Utilities;
 using Sitecore.Data;
 using Sitecore.Data.Fields;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Runtime.Serialization;
 using System.Xml.Serialization;
 using Sitecore.ContentSearch.SearchTypes;
@@ -27,69 +25,52 @@ namespace Jarstan.ContentSearch.SearchTypes
     {
         private readonly Dictionary<string, object> fields = new Dictionary<string, object>();
 
-        [DataMember]
-        [IndexField("s__smallcreateddate")]
+        [DataMember, IndexField("s__smallcreateddate")]
         public virtual DateTimeOffset CreatedDate { get; set; }
 
-        [DataMember]
-        [IndexField("urllink")]
+        [DataMember, IndexField("urllink")]
         public virtual string Url { get; set; }
 
-        [IndexField("s_datasource")]
-        [DataMember]
+        [DataMember, IndexField("s_datasource")]
         public virtual string Datasource { get; set; }
 
-        [DataMember]
-        [IndexField("parsedcreatedby")]
+        [DataMember, IndexField("parsedcreatedby")]
         public virtual string CreatedBy { get; set; }
 
-        [DataMember]
-        [IndexField("s_group")]
-        [TypeConverter(typeof(IndexFieldIDValueConverter))]
+        [DataMember, IndexField("s_group"), TypeConverter(typeof(IndexFieldIDValueConverter))]
         public virtual ID ItemId { get; set; }
 
-        [DataMember]
-        [IndexField("s_language")]
+        [DataMember, IndexField("s_language")]
         public virtual string Language { get; set; }
 
-        [DataMember]
-        [IndexField("s_name")]
+        [DataMember, IndexField("s_name")]
         public virtual string Name { get; set; }
 
-        [DataMember]
-        [IndexField("s_fullpath")]
+        [DataMember, IndexField("s_fullpath")]
         public virtual string Path { get; set; }
 
         [IndexField("s_path")]
         public virtual IEnumerable<ID> Paths { get; set; }
 
-        [IndexField("s_parent")]
-        [DataMember]
+        [DataMember, IndexField("s_parent")]   
         public virtual ID Parent { get; set; }
 
-        [TypeConverter(typeof(IndexFieldIDValueConverter))]
-        [IndexField("s_template")]
-        [DataMember]
+        [DataMember, IndexField("s_template"), TypeConverter(typeof(IndexFieldIDValueConverter))]
         public virtual ID TemplateId { get; set; }
 
-        [IndexField("s_templatename")]
-        [DataMember]
+        [DataMember, IndexField("s_templatename")]
         public virtual string TemplateName { get; set; }
 
-        [DataMember]
-        [IndexField("s_database")]
+        [DataMember, IndexField("s_database")]
         public virtual string DatabaseName { get; set; }
 
-        [IndexField("s__smallupdateddate")]
-        [DataMember]
+        [DataMember, IndexField("s__smallupdateddate")]
         public virtual DateTimeOffset Updated { get; set; }
 
-        [DataMember]
-        [IndexField("parsedupdatedby")]
+        [DataMember, IndexField("parsedupdatedby")]
         public virtual string UpdatedBy { get; set; }
 
-        [IndexField("s_content")]
-        [DataMember]
+        [DataMember, IndexField("s_content")]
         public virtual string Content { get; set; }
 
         [IndexField("s__semantics")]
@@ -105,21 +86,17 @@ namespace Jarstan.ContentSearch.SearchTypes
         public virtual string UniqueId { get; set; }
 
 
-        [IndexField("_uniqueid"), TypeConverter(typeof(IndexFieldItemUriValueConverter)), DataMember, XmlIgnore]
+        [DataMember, IndexField("_uniqueid"), TypeConverter(typeof(IndexFieldItemUriValueConverter)), XmlIgnore]
         public virtual ItemUri Uri { get; set; }
 
-        [DataMember]
-        [IndexField("s_version")]
+        [DataMember, IndexField("s_version")]
         public virtual string Version
         {
             get
             {
-                if (this.Uri == null)
-                    this.Uri = new ItemUri(this["s_uniqueId"]);
-                return this.Uri.Version.Number.ToString(CultureInfo.InvariantCulture);
-            }
-            set
-            {
+                if (Uri == null)
+                    Uri = new ItemUri(this["s_uniqueId"]);
+                return Uri.Version.Number.ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -127,7 +104,7 @@ namespace Jarstan.ContentSearch.SearchTypes
         {
             get
             {
-                return this.fields;
+                return fields;
             }
         }
 
@@ -137,13 +114,13 @@ namespace Jarstan.ContentSearch.SearchTypes
             {
                 if (key == null)
                     throw new ArgumentNullException("key");
-                return this.fields[key.ToLowerInvariant()].ToString();
+                return fields[key.ToLowerInvariant()].ToString();
             }
             set
             {
                 if (key == null)
                     throw new ArgumentNullException("key");
-                this.fields[key.ToLowerInvariant()] = (object)value;
+                fields[key.ToLowerInvariant()] = value;
             }
         }
 
@@ -153,35 +130,35 @@ namespace Jarstan.ContentSearch.SearchTypes
             {
                 if (key == null)
                     throw new ArgumentNullException("key");
-                return this.fields[key.ToString().ToLowerInvariant()];
+                return fields[key.ToString().ToLowerInvariant()];
             }
             set
             {
                 if (key == null)
                     throw new ArgumentNullException("key");
-                this.fields[key.ToString().ToLowerInvariant()] = value;
+                fields[key.ToString().ToLowerInvariant()] = value;
             }
         }
 
         public virtual Sitecore.Data.Items.Item GetItem()
         {
-            if (this.Uri == (ItemUri)null)
-                this.Uri = new ItemUri(this["s_uniqueId"]);
-            return Factory.GetDatabase(this.Uri.DatabaseName).GetItem(this.Uri.ItemID, this.Uri.Language, this.Uri.Version);
+            if (Uri == null)
+                Uri = new ItemUri(this["s_uniqueId"]);
+            return Factory.GetDatabase(Uri.DatabaseName).GetItem(Uri.ItemID, Uri.Language, Uri.Version);
         }
 
         public virtual Field GetField(ID fieldId)
         {
-            if (this.Uri == (ItemUri)null)
-                this.Uri = new ItemUri(this["s_url"]);
-            return Factory.GetDatabase(this.Uri.DatabaseName).GetItem(this.Uri.ItemID, this.Uri.Language, this.Uri.Version).Fields[fieldId];
+            if (Uri == null)
+                Uri = new ItemUri(this["s_url"]);
+            return Factory.GetDatabase(Uri.DatabaseName).GetItem(Uri.ItemID, Uri.Language, Uri.Version).Fields[fieldId];
         }
 
         public virtual FieldCollection GetFields(ID[] fieldId)
         {
-            if (this.Uri == (ItemUri)null)
-                this.Uri = new ItemUri(this["s_url"]);
-            Sitecore.Data.Items.Item obj = Factory.GetDatabase(this.Uri.DatabaseName).GetItem(this.Uri.ItemID, this.Uri.Language, this.Uri.Version);
+            if (Uri == (ItemUri)null)
+                Uri = new ItemUri(this["s_url"]);
+            Sitecore.Data.Items.Item obj = Factory.GetDatabase(Uri.DatabaseName).GetItem(Uri.ItemID, Uri.Language, Uri.Version);
             foreach (ID fieldId1 in fieldId)
                 obj.Fields.EnsureField(fieldId1);
             return obj.Fields;
@@ -189,40 +166,40 @@ namespace Jarstan.ContentSearch.SearchTypes
 
         public virtual Field GetField(string fieldName)
         {
-            if (this.Uri == (ItemUri)null)
-                this.Uri = new ItemUri(this["s_url"]);
-            return Factory.GetDatabase(this.Uri.DatabaseName).GetItem(this.Uri.ItemID, this.Uri.Language, this.Uri.Version).Fields[fieldName];
+            if (Uri == null)
+                Uri = new ItemUri(this["s_url"]);
+            return Factory.GetDatabase(Uri.DatabaseName).GetItem(Uri.ItemID, Uri.Language, Uri.Version).Fields[fieldName];
         }
 
         public override string ToString()
         {
-            return Enumerable.Aggregate<string, string>(Enumerable.Cast<string>(this.fields.Keys), string.Format("{0}, {1}, {2}", (object)this.Uri.ItemID, (object)this.Uri.Language, (object)this.Uri.Version), ((current, key) => current + (object)", " + (string)this.fields[key]));
+            return Enumerable.Aggregate(Enumerable.Cast<string>(fields.Keys), string.Format("{0}, {1}, {2}", Uri.ItemID, Uri.Language, Uri.Version), ((current, key) => current + ", " + fields[key]));
         }
 
         //public IQueryable<TResult> GetDescendants<TResult>(IProviderSearchContext context) where TResult : AzureSearchResultItem, new()
         //{
-        //    Sitecore.Data.Items.Item sitecoreItem = this.GetItem();
+        //    Sitecore.Data.Items.Item sitecoreItem = GetItem();
         //    string s = IdHelper.NormalizeGuid(sitecoreItem.ID.ToString(), true);
-        //    return Queryable.Where(context.GetQueryable<TResult>(new CultureExecutionContext(new CultureInfo(this.Language))), (i => (i.Parent == sitecoreItem.ID || Enumerable.Contains<ID>(i.Paths, sitecoreItem.ID)) && i["s_group"] != s));
+        //    return Queryable.Where(context.GetQueryable<TResult>(new CultureExecutionContext(new CultureInfo(Language))), (i => (i.Parent == sitecoreItem.ID || Enumerable.Contains<ID>(i.Paths, sitecoreItem.ID)) && i["s_group"] != s));
         //}
 
         //public IQueryable<TResult> GetChildren<TResult>(IProviderSearchContext context) where TResult : AzureSearchResultItem, new()
         //{
-        //    Sitecore.Data.Items.Item sitecoreItem = this.GetItem();
-        //    return Queryable.Where<TResult>(context.GetQueryable<TResult>((IExecutionContext)new CultureExecutionContext(new CultureInfo(this.Language))), (i => i.Parent == sitecoreItem.ID));
+        //    Sitecore.Data.Items.Item sitecoreItem = GetItem();
+        //    return Queryable.Where<TResult>(context.GetQueryable<TResult>((IExecutionContext)new CultureExecutionContext(new CultureInfo(Language))), (i => i.Parent == sitecoreItem.ID));
         //}
 
         //public IQueryable<TResult> GetAncestors<TResult>(IProviderSearchContext context) where TResult : AzureSearchResultItem, new()
         //{
         //    Expression<Func<TResult, bool>> expression = PredicateBuilder.True<TResult>();
-        //    ID currentItemid = this.GetItem().ID;
+        //    ID currentItemid = GetItem().ID;
 
-        //    foreach (ID id in EnumerableExtensions.RemoveWhere(this.Paths, (i => i == currentItemid)))
+        //    foreach (ID id in EnumerableExtensions.RemoveWhere(Paths, (i => i == currentItemid)))
         //    {
         //        string normalizeGuid = IdHelper.NormalizeGuid(id.ToString(), true);
         //        expression = PredicateBuilder.Or(expression, (i => i["s_group"] == normalizeGuid));
         //    }
-        //    return Queryable.Where(context.GetQueryable<TResult>(new CultureExecutionContext(new CultureInfo(this.Language))), expression);
+        //    return Queryable.Where(context.GetQueryable<TResult>(new CultureExecutionContext(new CultureInfo(Language))), expression);
         //}
     }
 }
