@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.Search.Models;
+using Newtonsoft.Json;
 using Sitecore;
 using Sitecore.ContentSearch;
 using Sitecore.ContentSearch.Maintenance;
@@ -83,7 +84,20 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             get
             {
-                return 0;
+                try
+                {
+                    var searchParams = new SearchParameters();
+                    searchParams.Top = 1;
+                    searchParams.SearchFields = new List<string>();
+                    searchParams.SearchFields.Add("s_key");
+                    var indexTask = index.AzureSearchClient.Documents.SearchWithHttpMessagesAsync("*", searchParams);
+                    indexTask.Wait();
+                    return indexTask.Result.Body.Results.FirstOrDefault().Document.Keys.Count;
+                }
+                catch (Exception)
+                {
+                    return 0;
+                }
             }
         }
 

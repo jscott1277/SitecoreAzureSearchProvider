@@ -8,6 +8,7 @@ using Sitecore.Diagnostics;
 using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Jarstan.ContentSearch
 {
@@ -16,6 +17,32 @@ namespace Jarstan.ContentSearch
         public IDocumentBuilderOptions Options { get; private set; }
 
         public IIndexable Indexable { get; private set; }
+
+        public string Key
+        {
+            get
+            {
+                if (Indexable != null)
+                {
+                    //sitecore://master/{110D559F-DEA5-42EA-9C1C-8A5DF7E70EF9}?lang=da&ver=1
+                    return Base64Encode(Indexable.UniqueId.ToString());
+                }
+
+                return null;
+            }
+        }
+
+        public string Base64Encode(string plainText)
+        {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+            return HttpServerUtility.UrlTokenEncode(plainTextBytes);
+        }
+
+        public string Base64Decode(string base64EncodedData)
+        {
+            var base64EncodedBytes = HttpServerUtility.UrlTokenDecode(base64EncodedData);
+            return System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
+        }
 
         public T Document { get; private set; }
 
@@ -152,7 +179,7 @@ namespace Jarstan.ContentSearch
             try
             {
                 VerboseLogging.CrawlingLogDebug(() => "AddSpecialFields Start");
-                AddSpecialField("s_key", Indexable.UniqueId.GetHashCode(), false);
+                AddSpecialField("s_key", Key, false);
                 AddSpecialField("s_uniqueid", Indexable.UniqueId.ToString(), false);
                 AddSpecialField("s_datasource", Indexable.DataSource.ToLowerInvariant(), false);
                 AddSpecialField("s_indexname", Index.Name.ToLowerInvariant(), false);

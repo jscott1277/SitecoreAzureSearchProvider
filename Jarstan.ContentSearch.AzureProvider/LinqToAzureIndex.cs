@@ -361,7 +361,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             //TODO:  Figure out how to fix the '+=' issue in AzureQueryMapper
             var strQuery = query.ToString().Replace("+-", "-");
 
-            SearchLog.Log.Info(string.Format("ExecuteQueryAgainstAzure ({0}): {1} - Filter : {2} - Facets : {3} - Highlights : {4}", context.Index.Name, strQuery, query.Filter != null ? query.Filter.ToString() : string.Empty, query.FacetQueries != null ? string.Join(", ", query.FacetQueries) : string.Empty , query.Highlights != null ? query.Highlights.ToString() : string.Empty), null);
+            SearchLog.Log.Info(string.Format("ExecuteQueryAgainstAzure ({0}): {1} - Filter : {2} - Facets : {3} - Highlights : {4}", context.Index.Name, strQuery, query.Filter != null ? query.Filter.ToString() : string.Empty, query.FacetQueries != null ? string.Join(", ", query.FacetQueries) : string.Empty, query.Highlights != null ? string.Join(", ", query.Highlights) : string.Empty), null);
 
             var responseTask = indexClient.Documents.SearchWithHttpMessagesAsync(strQuery, searchParams);
             responseTask.Wait();
