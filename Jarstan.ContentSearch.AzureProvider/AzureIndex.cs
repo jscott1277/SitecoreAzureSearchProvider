@@ -327,7 +327,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             Update(new List<IIndexableUniqueId> { indexableUniqueId }, IndexingOptions.Default);
         }
 
-        public void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
+        public async void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
         {
             if (!this.AzureSchemaBuilt)
             {
@@ -348,7 +348,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                         Fields = fields
                     };
 
-                    AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
+                    await AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
                     this.AzureSchemaBuilt = true;
                 }
                 catch (Exception ex)
@@ -362,7 +362,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
         }
 
-        public void ReconcileAzureIndexSchema(Document document)
+        public async void ReconcileAzureIndexSchema(Document document)
         {
             try
             {
@@ -392,7 +392,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                     Fields = fields
                 };
 
-                AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
+                await AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
             }
             catch (Exception ex)
             {
@@ -423,6 +423,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             stopwatch.Start();
 
             AzureServiceClient.Indexes.Delete(this.Name);
+            AzureSchemaBuilt = false;
 
             using (IProviderUpdateContext updateContext = CreateUpdateContext())
             {

@@ -116,13 +116,14 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
         }
 
-        public void Commit()
+        public async void Commit()
         {
             if (IndexActions.Any())
             {
                 try
                 {
-                    var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions.ToArray()));
+                    await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions.ToArray()));
+                    //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions.ToArray()));
                     //response.Wait();
                     IndexActions.Clear();
                 }
