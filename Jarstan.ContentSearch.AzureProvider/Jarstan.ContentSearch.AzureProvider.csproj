@@ -125,6 +125,7 @@
     <Compile Include="FieldReaders\NumericFieldReader.cs" />
     <Compile Include="IAzureProviderIndex.cs" />
     <Compile Include="IAzureProviderUpdateContext.cs" />
+    <Compile Include="IAzureSearchIndexSchema.cs" />
     <Compile Include="IndexData.cs" />
     <Compile Include="LinqToAzureIndex.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

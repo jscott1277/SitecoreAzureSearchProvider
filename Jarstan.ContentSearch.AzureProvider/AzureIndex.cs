@@ -43,8 +43,8 @@ namespace Jarstan.ContentSearch.AzureProvider
             this.settings = ContentSearchManager.Locator.GetInstance<Sitecore.ContentSearch.Abstractions.ISettings>();
             this.factory = ContentSearchManager.Locator.GetInstance<Sitecore.Abstractions.IFactory>();
             this.indexes = new Dictionary<string, ISearchIndex>();
-            this.AzureIndexFields = new ConcurrentQueue<Field>();
             this.Summary = new AzureIndexSummary(this);
+            this.Schema = new AzureIndexSchema(this);
             AddIndex(this);
         }
 
@@ -84,7 +84,6 @@ namespace Jarstan.ContentSearch.AzureProvider
         public SearchServiceClient AzureServiceClient { get; set; }
         public SearchIndexClient AzureSearchClient { get; set; }
         public SearchIndexClient AzureIndexClient { get; set; }
-        public ConcurrentQueue<Field> AzureIndexFields { get; set; }
 
         public override void AddCrawler(IProviderCrawler crawler)
         {
@@ -212,6 +211,14 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public override ISearchIndexSchema Schema { get; }
 
+        public IAzureSearchIndexSchema AzureSchema
+        {
+            get
+            {
+                return (IAzureSearchIndexSchema)Schema;
+            }
+        }
+
         public override IIndexPropertyStore PropertyStore { get; set; }
 
         public override AbstractFieldNameTranslator FieldNameTranslator { get; set; }
@@ -238,7 +245,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public override IEnumerable<Shard> Shards { get; }
 
-        public bool AzureSchemaBuilt { get; set; }
+       
 
         public void AddIndex(ISearchIndex index)
         {
@@ -327,94 +334,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             Update(new List<IIndexableUniqueId> { indexableUniqueId }, IndexingOptions.Default);
         }
 
-        public async void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
-        {
-            if (!this.AzureSchemaBuilt)
-            {
-                try
-                {
-                    //this.AzureIndexFields = this.AzureIndexFields.Where(f => f.Name != keyField.Name).ToList();
-                    AddAzureIndexField(keyField.Field);
-                    AddAzureIndexField(idField.Field);
 
-                    var indexName = Name;
-                    var fields = this.AzureIndexFields
-                        .GroupBy(f => f.Name)
-                        .Select(f => f.First()).ToList();
-
-                    var definition = new Index()
-                    {
-                        Name = indexName,
-                        Fields = fields
-                    };
-
-                    await AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
-                    this.AzureSchemaBuilt = true;
-                }
-                catch (Exception ex)
-                {
-                    CrawlingLog.Log.Fatal("Error creating index" + Name, ex);
-                }
-            }
-            else
-            {
-                ReconcileAzureIndexSchema(null);
-            }
-        }
-
-        public async void ReconcileAzureIndexSchema(Document document)
-        {
-            try
-            {
-                if (document != null)
-                {
-                    //Look for fields that are different from the standards:
-                    foreach (var key in document.Keys)
-                    {
-                        if (!this.AzureIndexFields.Any(f => f.Name == key))
-                        {
-                            object objVal;
-                            document.TryGetValue(key, out objVal);
-                            var field = AzureFieldBuilder.BuildField(key, objVal, this);
-                            AddAzureIndexField(field);
-                        }
-                    }
-                }
-
-                var indexName = Name;
-                var fields = this.AzureIndexFields
-                    .GroupBy(f => f.Name)
-                    .Select(f => f.First()).ToList();
-
-                var definition = new Index()
-                {
-                    Name = indexName,
-                    Fields = fields
-                };
-
-                await AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
-            }
-            catch (Exception ex)
-            {
-                CrawlingLog.Log.Fatal("Error creating index" + Name, ex);
-            }
-        }
-
-        public void AddAzureIndexFields(List<Field> indexFields)
-        {
-            foreach (var field in indexFields)
-            {
-                AddAzureIndexField(field);
-            }
-        }
-
-        public void AddAzureIndexField(Field indexField)
-        {
-            if (!string.IsNullOrEmpty(indexField.Name) && !this.AzureIndexFields.Any(f => f.Name == indexField.Name))
-            {
-                this.AzureIndexFields.Enqueue(indexField);
-            }
-        }
 
         protected override void PerformRebuild(IndexingOptions indexingOptions, CancellationToken cancellationToken)
         {
@@ -423,7 +343,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             stopwatch.Start();
 
             AzureServiceClient.Indexes.Delete(this.Name);
-            AzureSchemaBuilt = false;
+            AzureSchema.AzureSchemaBuilt = false;
 
             using (IProviderUpdateContext updateContext = CreateUpdateContext())
             {

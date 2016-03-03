@@ -82,7 +82,7 @@ namespace Azure.ContentSearch.AzureProvider
                 CrawlingLog.Log.Warn(string.Format("AzureIndexOperations.Add(): IndexVersion produced a NULL doc for version {0}. Skipping.", indexable.UniqueId));
             var document = data.BuildDocument();
 
-            ((IAzureProviderIndex)context.Index).ReconcileAzureIndexSchema(document);
+            ((IAzureProviderIndex)context.Index).AzureSchema.ReconcileAzureIndexSchema(document);
 
             AzureIndexOperations.LogIndexOperation((Func<string>)(() => string.Format("Adding indexable UniqueId:{0}, Culture:{1}, DataSource:{2}, Index:{3}", indexable.UniqueId, indexable.Culture, indexable.DataSource, context.Index.Name)), data, document);
             context.AddDocument(document, data.Culture != null ? new CultureExecutionContext(data.Culture) : null);
@@ -129,8 +129,8 @@ namespace Azure.ContentSearch.AzureProvider
             documentBuilder.AddComputedIndexFields();
             documentBuilder.AddBoost();
             var indexData = new IndexData(this.index, indexable, documentBuilder);
-            index.AddAzureIndexFields(indexData.Fields.Where(f => f.Name != indexData.UpdateTerm.Name).Select(f => f.Field).ToList());
-            index.BuildAzureIndexSchema(indexData.UpdateTerm, indexData.FullUpdateTerm);
+            index.AzureSchema.AddAzureIndexFields(indexData.Fields.Where(f => f.Name != indexData.UpdateTerm.Name).Select(f => f.Field).ToList());
+            index.AzureSchema.BuildAzureIndexSchema(indexData.UpdateTerm, indexData.FullUpdateTerm);
             return indexData;
         }
 
