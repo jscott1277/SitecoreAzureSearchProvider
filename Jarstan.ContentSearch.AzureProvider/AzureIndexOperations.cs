@@ -9,8 +9,6 @@ using Sitecore.Diagnostics;
 using Sitecore.Reflection;
 using Jarstan.ContentSearch.AzureProvider;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 
@@ -22,36 +20,33 @@ namespace Azure.ContentSearch.AzureProvider
 
         public AzureIndexOperations(IAzureProviderIndex index)
         {
-            Assert.ArgumentNotNull((object)index, "index");
-            //Assert.IsNotNull((object)index.Schema, "Index schema not available.");
+            Assert.ArgumentNotNull(index, "index");
+            Assert.IsNotNull(index.Schema, "Index schema not available.");
             this.index = index;
-        }
-
-        internal AzureIndexOperations()
-        {
         }
 
         public void Update(IIndexable indexable, IProviderUpdateContext context, ProviderIndexConfiguration indexConfiguration)
         {
-            var data = this.BuildDataToIndex(context, indexable);
+            var data = BuildDataToIndex(context, indexable);
             if (data == null)
                 return;
             if (data.IsEmpty)
-                CrawlingLog.Log.Warn(string.Format("AzureIndexOperations.Update(): IndexVersion produced a NULL doc for UniqueId {0}. Skipping.", (object)indexable.UniqueId), (Exception)null);
-            Document document = data.BuildDocument();
-            AzureIndexOperations.LogIndexOperation((Func<string>)(() => string.Format("Updating indexable UniqueId:{0}, Culture:{1}, DataSource:{2}, Index:{3}", (object)indexable.UniqueId, (object)indexable.Culture, (object)indexable.DataSource, (object)context.Index.Name)), data, document);
-            context.UpdateDocument(document, data.UpdateTerm, data.Culture != null ? (IExecutionContext)new CultureExecutionContext(data.Culture) : (IExecutionContext)null);
+                CrawlingLog.Log.Warn(string.Format("AzureIndexOperations.Update(): IndexVersion produced a NULL doc for UniqueId {0}. Skipping.", indexable.UniqueId), null);
+
+            var document = data.BuildDocument();
+            LogIndexOperation(() => string.Format("Updating indexable UniqueId:{0}, Culture:{1}, DataSource:{2}, Index:{3}", indexable.UniqueId, indexable.Culture, indexable.DataSource, context.Index.Name), data, document);
+            context.UpdateDocument(document, data.UpdateTerm, data.Culture != null ? new CultureExecutionContext(data.Culture) : null);
         }
 
         public void Delete(IIndexable indexable, IProviderUpdateContext context)
         {
-            Assert.ArgumentNotNull((object)indexable, "indexable");
-            VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Deleting indexable UniqueId:{0}, Index:{1}", (object)indexable.UniqueId, (object)context.Index.Name)));
-            IProviderUpdateContextEx providerUpdateContextEx = context as IProviderUpdateContextEx;
+            Assert.ArgumentNotNull(indexable, "indexable");
+            VerboseLogging.CrawlingLogDebug(() => string.Format("Deleting indexable UniqueId:{0}, Index:{1}", indexable.UniqueId, context.Index.Name));
+            var providerUpdateContextEx = context as IProviderUpdateContextEx;
             if (providerUpdateContextEx != null)
                 providerUpdateContextEx.Delete(indexable.UniqueId, new IExecutionContext[1]
                 {
-          indexable.Culture != null ? (IExecutionContext) new CultureExecutionContext(indexable.Culture) : (IExecutionContext) null
+                    indexable.Culture != null ? new CultureExecutionContext(indexable.Culture) : null
                 });
             else
                 context.Delete(indexable.UniqueId);
@@ -59,23 +54,23 @@ namespace Azure.ContentSearch.AzureProvider
 
         public void Delete(IIndexableId id, IProviderUpdateContext context)
         {
-            Assert.ArgumentNotNull((object)id, "id");
-            VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Deleting indexable id:{0}, Index:{1}", (object)id, (object)context.Index.Name)));
+            Assert.ArgumentNotNull(id, "id");
+            VerboseLogging.CrawlingLogDebug(() => string.Format("Deleting indexable id:{0}, Index:{1}", id, context.Index.Name));
             context.Delete(id);
         }
 
         public void Delete(IIndexableUniqueId indexableUniqueId, IProviderUpdateContext context)
         {
-            Assert.ArgumentNotNull((object)indexableUniqueId, "indexableUniqueId");
-            VerboseLogging.CrawlingLogDebug((Func<string>)(() => string.Format("Deleting indexable UniqueId:{0}, Index:{1}", (object)indexableUniqueId, (object)context.Index.Name)));
+            Assert.ArgumentNotNull(indexableUniqueId, "indexableUniqueId");
+            VerboseLogging.CrawlingLogDebug(() => string.Format("Deleting indexable UniqueId:{0}, Index:{1}", indexableUniqueId, context.Index.Name));
             context.Delete(indexableUniqueId);
         }
 
         public void Add(IIndexable indexable, IProviderUpdateContext context, ProviderIndexConfiguration indexConfiguration)
         {
-            Assert.ArgumentNotNull((object)indexable, "indexable");
-            Assert.ArgumentNotNull((object)context, "context");
-            var data = this.BuildDataToIndex(context, indexable);
+            Assert.ArgumentNotNull(indexable, "indexable");
+            Assert.ArgumentNotNull(context, "context");
+            var data = BuildDataToIndex(context, indexable);
             if (data == null)
                 return;
             if (data.IsEmpty)
@@ -84,36 +79,36 @@ namespace Azure.ContentSearch.AzureProvider
 
             ((IAzureProviderIndex)context.Index).AzureSchema.ReconcileAzureIndexSchema(document);
 
-            AzureIndexOperations.LogIndexOperation((Func<string>)(() => string.Format("Adding indexable UniqueId:{0}, Culture:{1}, DataSource:{2}, Index:{3}", indexable.UniqueId, indexable.Culture, indexable.DataSource, context.Index.Name)), data, document);
+            LogIndexOperation(() => string.Format("Adding indexable UniqueId:{0}, Culture:{1}, DataSource:{2}, Index:{3}", indexable.UniqueId, indexable.Culture, indexable.DataSource, context.Index.Name), data, document);
             context.AddDocument(document, data.Culture != null ? new CultureExecutionContext(data.Culture) : null);
         }
 
         private IndexData BuildDataToIndex(IProviderUpdateContext context, IIndexable version)
         {
-            ICorePipeline instance = context.Index.Locator.GetInstance<ICorePipeline>();
+            var instance = context.Index.Locator.GetInstance<ICorePipeline>();
             version = CleanUpPipeline.Run(instance, new CleanUpArgs(version, context));
             if (InboundIndexFilterPipeline.Run(instance, new InboundIndexFilterArgs(version)))
             {
-                this.index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", new object[2]
+                index.Locator.GetInstance<IEvent>().RaiseEvent("indexing:excludedfromindex", new object[2]
                 {
-                  this.index.Name,
+                  index.Name,
                   version.UniqueId
                 });
                 return null;
             }
-            var indexData = this.GetIndexData(version, context);
+            var indexData = GetIndexData(version, context);
 
             if (!indexData.IsEmpty)
                 return indexData;
-            CrawlingLog.Log.Warn(string.Format("AzureIndexOperations : IndexVersion produced a NULL doc for version {0}. Skipping.", (object)version.UniqueId), (Exception)null);
+            CrawlingLog.Log.Warn(string.Format("AzureIndexOperations : IndexVersion produced a NULL doc for version {0}. Skipping.", version.UniqueId), null);
             return null;
         }
 
         internal IndexData GetIndexData(IIndexable indexable, IProviderUpdateContext context)
         {
-            Assert.ArgumentNotNull((object)indexable, "indexable");
-            Assert.ArgumentNotNull((object)context, "context");
-            Assert.Required((object)(this.index.Configuration.DocumentOptions as AzureDocumentBuilderOptions), "IDocumentBuilderOptions of wrong type for this crawler");
+            Assert.ArgumentNotNull(indexable, "indexable");
+            Assert.ArgumentNotNull(context, "context");
+            Assert.Required((index.Configuration.DocumentOptions as AzureDocumentBuilderOptions), "IDocumentBuilderOptions of wrong type for this crawler");
             AzureDocumentBuilder documentBuilder = (AzureDocumentBuilder)ReflectionUtil.CreateObject(context.Index.Configuration.DocumentBuilderType, new object[2]
             {
                 indexable,
@@ -128,7 +123,7 @@ namespace Azure.ContentSearch.AzureProvider
             documentBuilder.AddItemFields();
             documentBuilder.AddComputedIndexFields();
             documentBuilder.AddBoost();
-            var indexData = new IndexData(this.index, indexable, documentBuilder);
+            var indexData = new IndexData(index, indexable, documentBuilder);
             index.AzureSchema.AddAzureIndexFields(indexData.Fields.Where(f => f.Name != indexData.UpdateTerm.Name).Select(f => f.Field).ToList());
             index.AzureSchema.BuildAzureIndexSchema(indexData.UpdateTerm, indexData.FullUpdateTerm);
             return indexData;
@@ -136,7 +131,7 @@ namespace Azure.ContentSearch.AzureProvider
 
         private static void LogIndexOperation(Func<string> logOperation, IndexData data, Document document)
         {
-            VerboseLogging.CrawlingLogDebug((Func<string>)(() =>
+            VerboseLogging.CrawlingLogDebug(() =>
             {
                 StringBuilder stringBuilder = new StringBuilder();
                 stringBuilder.AppendLine(logOperation());
@@ -149,7 +144,7 @@ namespace Azure.ContentSearch.AzureProvider
                     }
                 }
                 return stringBuilder.ToString();
-            }));
+            });
         }
     }
 }
