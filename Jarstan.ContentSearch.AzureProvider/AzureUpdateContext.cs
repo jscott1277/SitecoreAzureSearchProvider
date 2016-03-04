@@ -1,25 +1,14 @@
 ﻿using Microsoft.Azure.Search.Models;
-using Sitecore;
-using Sitecore.Abstractions;
 using Sitecore.ContentSearch;
-using Sitecore.ContentSearch.Abstractions;
 using Sitecore.ContentSearch.Diagnostics;
 using Sitecore.ContentSearch.Linq.Common;
 using Sitecore.ContentSearch.Sharding;
 using Sitecore.ContentSearch.Utilities;
-using Sitecore.Data;
-using Sitecore.Data.Managers;
 using Sitecore.Diagnostics;
-using Sitecore.Search;
-using Jarstan.ContentSearch.AzureProvider.DelegatingHandlers;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Jarstan.ContentSearch.AzureProvider
@@ -42,12 +31,12 @@ namespace Jarstan.ContentSearch.AzureProvider
             if (num > 0)
                 this.ParallelOptions.MaxDegreeOfParallelism = num;
             this.CommitPolicyExecutor = new NullCommitPolicyExecutor();
-            IndexActions = new List<IndexAction>();
+            IndexActions = new ConcurrentQueue<IndexAction>();
         }
 
         public ParallelOptions ParallelOptions { get; set; }
 
-        public List<IndexAction> IndexActions { get; set; }
+        public ConcurrentQueue<IndexAction> IndexActions { get; set; }
 
         public ISearchIndex Index { get; set; }
 
@@ -72,7 +61,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public void AddDocument(object itemToAdd, params IExecutionContext[] executionContexts)
         {
-            IndexActions.Add(IndexAction.MergeOrUpload((Document)itemToAdd));
+            IndexActions.Enqueue(IndexAction.MergeOrUpload((Document)itemToAdd));
 
             if (!AzureIndex.AzureConfiguration.AzureSearchEnableBatching)
             {
@@ -91,7 +80,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public void UpdateDocument(object itemToUpdate, object criteriaForUpdate, params IExecutionContext[] executionContexts)
         {
-            IndexActions.Add(IndexAction.MergeOrUpload((Document)itemToUpdate));
+            IndexActions.Enqueue(IndexAction.MergeOrUpload((Document)itemToUpdate));
         }
 
         public void Delete(IIndexableUniqueId id)
@@ -112,7 +101,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
             foreach (var result in results)
             {
-                IndexActions.Add(IndexAction.Delete(result.Document));
+                IndexActions.Enqueue(IndexAction.Delete(result.Document));
             }
         }
 
@@ -122,10 +111,9 @@ namespace Jarstan.ContentSearch.AzureProvider
             {
                 try
                 {
-                    await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions.ToArray()));
-                    //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions.ToArray()));
+                    await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions));
+                    //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions));
                     //response.Wait();
-                    IndexActions.Clear();
                 }
                 catch (Exception ex)
                 {

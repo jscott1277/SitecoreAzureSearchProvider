@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.Search.Models;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +10,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 {
     interface IAzureProviderUpdateContext
     {
-        List<IndexAction> IndexActions { get; set; }
+        ConcurrentQueue<IndexAction> IndexActions { get; set; }
         IAzureProviderIndex AzureIndex { get; }
     }
 }

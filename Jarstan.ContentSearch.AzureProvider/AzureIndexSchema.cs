@@ -26,11 +26,12 @@ namespace Jarstan.ContentSearch.AzureProvider
         public ConcurrentQueue<Field> AzureIndexFields { get; set; }
         public bool AzureSchemaBuilt { get; set; }
 
+        private Index AzureIndex { get; set; }
+
         public AzureIndexSchema(IAzureProviderIndex index)
         {
             Assert.ArgumentNotNull(index, "index");
             this.index = index;
-
             AzureIndexFields = new ConcurrentQueue<Field>();
         }
 
@@ -51,7 +52,7 @@ namespace Jarstan.ContentSearch.AzureProvider
         }
 
 
-        public async void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
+        public void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
         {
             if (!this.AzureSchemaBuilt)
             {
@@ -72,7 +73,10 @@ namespace Jarstan.ContentSearch.AzureProvider
                         Fields = fields
                     };
 
-                    await index.AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
+                    var searchOptions = new SearchRequestOptions(Guid.NewGuid());
+                    var indexTask = index.AzureServiceClient.Indexes.CreateOrUpdateAsync(definition, searchOptions);
+                    indexTask.Wait();
+                    AzureIndex = indexTask.Result;
                     this.AzureSchemaBuilt = true;
                 }
                 catch (Exception ex)
@@ -82,15 +86,17 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
             else
             {
-                ReconcileAzureIndexSchema(null);
+                var result = ReconcileAzureIndexSchema(null);
+                while (result == false);
             }
         }
 
 
-        public async void ReconcileAzureIndexSchema(Document document)
+        public bool ReconcileAzureIndexSchema(Document document)
         {
             try
             {
+                var fieldCount = AzureIndex.Fields.Count;
                 if (document != null)
                 {
                     //Look for fields that are different from the standards:
@@ -106,24 +112,29 @@ namespace Jarstan.ContentSearch.AzureProvider
                     }
                 }
 
-                var indexName = index.Name;
-                var fields = AzureIndexFields
-                    .GroupBy(f => f.Name)
-                    .Select(f => f.First()).ToList();
-
-                var definition = new Index()
+                if (AzureIndexFields.Count > fieldCount)
                 {
-                    Name = indexName,
-                    Fields = fields
-                };
+                    var indexName = index.Name;
+                    var fields = AzureIndexFields
+                        .GroupBy(f => f.Name)
+                        .Select(f => f.First()).ToList();
 
-                await index.AzureServiceClient.Indexes.CreateOrUpdateAsync(definition);
+                    AzureIndex.Fields = fields;
+
+                    var indexTask = index.AzureServiceClient.Indexes.CreateOrUpdateAsync(AzureIndex);
+                    indexTask.Wait();
+                    AzureIndex = indexTask.Result;
+                    return true;
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
-                CrawlingLog.Log.Fatal("Error creating index" + index.Name, ex);
+                CrawlingLog.Log.Fatal("Error updating index" + index.Name, ex);
             }
-        }
 
+            return true;
+        }
     }
 }
