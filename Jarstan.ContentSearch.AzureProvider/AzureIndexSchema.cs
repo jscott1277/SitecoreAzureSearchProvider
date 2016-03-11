@@ -73,10 +73,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                         Fields = fields
                     };
 
-                    var searchOptions = new SearchRequestOptions(Guid.NewGuid());
-                    var indexTask = index.AzureServiceClient.Indexes.CreateOrUpdateAsync(definition, searchOptions);
-                    indexTask.Wait();
-                    AzureIndex = indexTask.Result;
+                    AzureIndex = index.AzureServiceClient.Indexes.Create(definition);
                     this.AzureSchemaBuilt = true;
                 }
                 catch (Exception ex)
@@ -86,11 +83,15 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
             else
             {
-                var result = ReconcileAzureIndexSchema(null);
-                while (result == false);
+                var retryCount = 0;
+                var result = false;
+                while (result == false || retryCount < 6)
+                {
+                    result = ReconcileAzureIndexSchema(null);
+                    retryCount++;
+                }
             }
         }
-
 
         public bool ReconcileAzureIndexSchema(Document document)
         {
@@ -120,21 +121,15 @@ namespace Jarstan.ContentSearch.AzureProvider
                         .Select(f => f.First()).ToList();
 
                     AzureIndex.Fields = fields;
-
-                    var indexTask = index.AzureServiceClient.Indexes.CreateOrUpdateAsync(AzureIndex);
-                    indexTask.Wait();
-                    AzureIndex = indexTask.Result;
-                    return true;
+                    AzureIndex = index.AzureServiceClient.Indexes.CreateOrUpdate(AzureIndex);
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                CrawlingLog.Log.Fatal("Error updating index" + index.Name, ex);
+                return false;
             }
-
-            return true;
         }
     }
 }

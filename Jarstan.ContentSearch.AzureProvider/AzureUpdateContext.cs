@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Search.Models;
+﻿using Microsoft.Azure.Search;
+using Microsoft.Azure.Search.Models;
 using Sitecore.ContentSearch;
 using Sitecore.ContentSearch.Diagnostics;
 using Sitecore.ContentSearch.Linq.Common;
@@ -9,14 +10,13 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Jarstan.ContentSearch.AzureProvider
 {
     public class AzureUpdateContext : IProviderUpdateContext, IProviderOperationContext, IDisposable, IProviderUpdateContextEx, IAzureProviderUpdateContext
     {
-        private volatile bool isDisposed;
-        private volatile bool isDisposing;
         private readonly IContentSearchConfigurationSettings contentSearchSettings;
 
         public AzureUpdateContext(ISearchIndex index)
@@ -31,12 +31,9 @@ namespace Jarstan.ContentSearch.AzureProvider
             if (num > 0)
                 this.ParallelOptions.MaxDegreeOfParallelism = num;
             this.CommitPolicyExecutor = new NullCommitPolicyExecutor();
-            IndexActions = new ConcurrentQueue<IndexAction>();
         }
 
         public ParallelOptions ParallelOptions { get; set; }
-
-        public ConcurrentQueue<IndexAction> IndexActions { get; set; }
 
         public ISearchIndex Index { get; set; }
 
@@ -61,16 +58,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public void AddDocument(object itemToAdd, params IExecutionContext[] executionContexts)
         {
-            IndexActions.Enqueue(IndexAction.MergeOrUpload((Document)itemToAdd));
-
-            if (!AzureIndex.AzureConfiguration.AzureSearchEnableBatching)
-            {
-                Commit();
-            }
-            else if (AzureIndex.AzureConfiguration.AzureSearchEnableBatching && IndexActions.Count >= AzureIndex.AzureConfiguration.AzureSearchBatchSize)
-            {
-                Commit();
-            }
+            Commit(IndexAction.MergeOrUpload((Document)itemToAdd));
         }
 
         public void UpdateDocument(object itemToUpdate, object criteriaForUpdate, IExecutionContext executionContext)
@@ -80,7 +68,7 @@ namespace Jarstan.ContentSearch.AzureProvider
 
         public void UpdateDocument(object itemToUpdate, object criteriaForUpdate, params IExecutionContext[] executionContexts)
         {
-            IndexActions.Enqueue(IndexAction.MergeOrUpload((Document)itemToUpdate));
+            UpdateDocument(itemToUpdate, executionContexts);
         }
 
         public void Delete(IIndexableUniqueId id)
@@ -101,21 +89,44 @@ namespace Jarstan.ContentSearch.AzureProvider
 
             foreach (var result in results)
             {
-                IndexActions.Enqueue(IndexAction.Delete(result.Document));
+                Commit(IndexAction.Delete(result.Document));
             }
         }
 
-        public async void Commit()
+        public void Commit()
         {
-            if (IndexActions.Any())
+            //var actions = GetActions();
+            //if (actions.Any())
+            //{
+            //    try
+            //    {
+            //        await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(actions));
+            //        //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(actions));
+            //        //response.Wait();
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        CrawlingLog.Log.Warn("Error indexing on Item for " + Index.Name, ex);
+            //    }
+            //}
+        }
+
+        public async void Commit(IndexAction action, int retry = 0)
+        {
+            try
             {
-                try
+                await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(new List<IndexAction> { action }));
+                //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(actions));
+                //response.Wait();
+            }
+            catch (Exception ex)
+            {
+                if (retry < 6)
                 {
-                    await AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions));
-                    //var response = AzureIndex.AzureIndexClient.Documents.IndexWithHttpMessagesAsync(IndexBatch.New(IndexActions));
-                    //response.Wait();
+                    Thread.Sleep(50);
+                    Commit(action, retry++);
                 }
-                catch (Exception ex)
+                else
                 {
                     CrawlingLog.Log.Warn("Error indexing on Item for " + Index.Name, ex);
                 }

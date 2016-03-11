@@ -10,7 +10,6 @@ namespace Jarstan.ContentSearch.AzureProvider
 {
     interface IAzureProviderUpdateContext
     {
-        ConcurrentQueue<IndexAction> IndexActions { get; set; }
         IAzureProviderIndex AzureIndex { get; }
     }
 }

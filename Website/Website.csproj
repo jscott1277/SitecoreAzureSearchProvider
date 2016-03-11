@@ -208,7 +208,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="App_Config\Include\Jarstan.ContentSearch\Jarstan.ContentSearch.AzureMaster.config">
+    <Content Include="App_Config\Include\Jarstan.ContentSearch\Jarstan.ContentSearch.Azure.Web.config">
       <SubType>Designer</SubType>
     </Content>
   </ItemGroup>
