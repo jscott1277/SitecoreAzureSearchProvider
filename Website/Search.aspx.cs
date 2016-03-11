@@ -21,12 +21,12 @@ namespace Website
 
         protected void btnSearch_Click(object sender, EventArgs e)
         {
-            using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-media-index").CreateSearchContext())
+            using (var context = ContentSearchManager.GetIndex("azure-sitecore-web-index").CreateSearchContext())
             {
                 var queryable = context.GetQueryable<AzureSearchResultItem>();
                 queryable = queryable.Where(s => s.Content.Contains(txtSearchTerm.Text));
                 queryable = queryable.Where(l => l.Language == "en");
-                queryable = queryable.OrderByDescending(o => o.Name);
+                queryable = queryable.OrderBy(o => o.Name);
                 var results = queryable.GetResults();
                 lblAzureCount.Text = results.TotalSearchResults.ToString();
 
@@ -34,12 +34,12 @@ namespace Website
                 gvAzureResults.DataBind();
             }
 
-            using (var context = ContentSearchManager.GetIndex("sitecore_master_media_index").CreateSearchContext())
+            using (var context = ContentSearchManager.GetIndex("sitecore_test_web_index").CreateSearchContext())
             {
                 var queryable = context.GetQueryable<SearchResultItem>();
                 queryable = queryable.Where(s => s.Content.Contains(txtSearchTerm.Text));
                 queryable = queryable.Where(l => l.Language == "en");
-                queryable = queryable.OrderByDescending(o => o.Name);
+                queryable = queryable.OrderBy(o => o.Name);
                 var results = queryable.GetResults();
                 lblLuceneCount.Text = results.TotalSearchResults.ToString();
 

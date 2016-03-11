@@ -15,8 +15,8 @@
         </div>
         <asp:Button runat="server" ID="btnSearch" Text="Search" CssClass="btn btn-default" OnClick="btnSearch_Click" />
     
-        <div class="col-md-10">
-            <div class="col-md-5">
+        <div class="col-lg-12">
+            <div class="col-lg-6">
                 <h1>Azure Search Results</h1>
                 <asp:Label runat="server" ID="lblAzureCount"></asp:Label>
                 <asp:GridView ID="gvAzureResults" runat="server" CssClass="table table-hover" AutoGenerateColumns="false">
@@ -26,7 +26,7 @@
                     </Columns>
                 </asp:GridView>
             </div>
-            <div class="col-md-5">
+            <div class="col-lg-6">
                 <h1>Lucene Search Results</h1>
                 <asp:Label runat="server" ID="lblLuceneCount"></asp:Label>
                 <asp:GridView ID="gvLuceneResults" runat="server" CssClass="table table-hover" AutoGenerateColumns="false">
