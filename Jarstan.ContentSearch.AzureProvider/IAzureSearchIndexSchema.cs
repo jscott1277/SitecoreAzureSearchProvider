@@ -15,6 +15,6 @@ namespace Jarstan.ContentSearch.AzureProvider
         void AddAzureIndexField(Field indexField);
         bool AzureSchemaBuilt { get; set; }
         void BuildAzureIndexSchema(AzureField keyField, AzureField idField);
-        bool ReconcileAzureIndexSchema(Document document);
+        bool ReconcileAzureIndexSchema(Document document, int retryCount = 0);
     }
 }

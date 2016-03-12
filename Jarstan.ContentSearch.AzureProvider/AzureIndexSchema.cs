@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using Sitecore.ContentSearch.Diagnostics;
 using Microsoft.Azure.Search;
+using System.Threading;
 
 namespace Jarstan.ContentSearch.AzureProvider
 {
@@ -51,7 +52,6 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
         }
 
-
         public void BuildAzureIndexSchema(AzureField keyField, AzureField idField)
         {
             if (!this.AzureSchemaBuilt)
@@ -81,19 +81,9 @@ namespace Jarstan.ContentSearch.AzureProvider
                     CrawlingLog.Log.Fatal("Error creating index" + index.Name, ex);
                 }
             }
-            else
-            {
-                var retryCount = 0;
-                var result = false;
-                while (result == false || retryCount < 6)
-                {
-                    result = ReconcileAzureIndexSchema(null);
-                    retryCount++;
-                }
-            }
         }
 
-        public bool ReconcileAzureIndexSchema(Document document)
+        public bool ReconcileAzureIndexSchema(Document document, int retryCount = 0)
         {
             try
             {
@@ -128,6 +118,19 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
             catch (Exception ex)
             {
+                if (!ReconcileAzureIndexSchema(null))
+                {
+                    Thread.Sleep(50);
+                    if (retryCount < 6)
+                    {
+                        return ReconcileAzureIndexSchema(null, retryCount++);
+                    }
+                    else
+                    {
+                        CrawlingLog.Log.Warn("Error updating index" + index.Name);
+                    }
+                }
+                
                 return false;
             }
         }
