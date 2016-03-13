@@ -25,9 +25,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             {
                 try
                 {
-                    var countTask = index.AzureIndexClient.Documents.CountWithHttpMessagesAsync();
-                    countTask.Wait();
-                    return countTask.Result.Body;
+                    return index.AzureIndexClient.Documents.Count();
                 }
                 catch
                 {
@@ -66,18 +64,18 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             get
             {
-                if (this.index.PropertyStore == null)
+                if (index.PropertyStore == null)
                     return DateTime.MinValue;
-                string isoDate = this.index.PropertyStore.Get(IndexProperties.LastUpdatedKey);
+                string isoDate = index.PropertyStore.Get(IndexProperties.LastUpdatedKey);
                 if (isoDate.Length <= 0)
                     return DateTime.MinValue;
                 return DateUtil.IsoDateToDateTime(isoDate, DateTime.MinValue, true);
             }
             set
             {
-                if (this.index.PropertyStore == null)
+                if (index.PropertyStore == null)
                     return;
-                this.index.PropertyStore.Set(IndexProperties.LastUpdatedKey, DateUtil.ToIsoDate(value, true, true));
+                index.PropertyStore.Set(IndexProperties.LastUpdatedKey, DateUtil.ToIsoDate(value, true, true));
             }
         }
 
@@ -148,7 +146,7 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             get
             {
-                return (IDictionary<string, string>)null;
+                return null;
             }
         }
 
@@ -157,14 +155,14 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             get
             {
-                this.lastIndexedEntry = (IIndexableInfo)(JsonConvert.DeserializeObject<IndexableInfo>(this.index.PropertyStore.Get(IndexProperties.LastIndexedEntry)) ?? new IndexableInfo());
-                return this.lastIndexedEntry;
+                lastIndexedEntry = (JsonConvert.DeserializeObject<IndexableInfo>(index.PropertyStore.Get(IndexProperties.LastIndexedEntry)) ?? new IndexableInfo());
+                return lastIndexedEntry;
             }
             set
             {
-                Assert.ArgumentNotNull((object)value, "value");
-                this.lastIndexedEntry = value;
-                this.index.PropertyStore.Set(IndexProperties.LastIndexedEntry, JsonConvert.SerializeObject((object)this.lastIndexedEntry));
+                Assert.ArgumentNotNull(value, "value");
+                lastIndexedEntry = value;
+                index.PropertyStore.Set(IndexProperties.LastIndexedEntry, JsonConvert.SerializeObject(lastIndexedEntry));
             }
         }
 
@@ -172,15 +170,15 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             get
             {
-                string s = this.index.PropertyStore.Get(IndexProperties.LastUpdatedTimestamp);
+                string s = index.PropertyStore.Get(IndexProperties.LastUpdatedTimestamp);
                 if (string.IsNullOrEmpty(s))
                     return new long?();
-                return new long?(long.Parse(s, (IFormatProvider)CultureInfo.InvariantCulture));
+                return new long?(long.Parse(s, CultureInfo.InvariantCulture));
             }
             set
             {
-                string str = !value.HasValue ? string.Empty : value.Value.ToString((IFormatProvider)CultureInfo.InvariantCulture);
-                this.index.PropertyStore.Set(IndexProperties.LastUpdatedTimestamp, str);
+                string str = !value.HasValue ? string.Empty : value.Value.ToString(CultureInfo.InvariantCulture);
+                index.PropertyStore.Set(IndexProperties.LastUpdatedTimestamp, str);
             }
         }
 
