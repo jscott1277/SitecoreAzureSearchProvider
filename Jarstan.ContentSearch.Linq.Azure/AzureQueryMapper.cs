@@ -56,7 +56,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
         public override AzureQuery MapQuery(IndexQuery query)
         {
             var mappingState = new AzureQueryMapperState(this.Parameters.ExecutionContexts);
-            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.Highlights, mappingState.HighlightPreTag, mappingState.HighlightPostTag, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
+            return new AzureQuery(this.Visit(query.RootNode, mappingState), mappingState.FilterQueries, mappingState.AdditionalQueryMethods, mappingState.VirtualFieldProcessors, mappingState.FacetQueries, mappingState.Highlights, mappingState.HighlightPreTag, mappingState.HighlightPostTag, mappingState.MergeHighlights, mappingState.UsedAnalyzers, mappingState.ExecutionContexts);
         }
 
         protected virtual Query GetFieldQuery(string field, string queryText, AzureQueryMapperState mappingState)
@@ -249,6 +249,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
             methods.Add(new GetHighlightResultsMethod());
             state.HighlightPreTag = node.PreTag;
             state.HighlightPostTag = node.PostTag;
+            state.MergeHighlights = node.MergeHighlights;
         }
 
         protected virtual void StripFacetOn(FacetOnNode node, AzureQueryMapperState state)
@@ -999,6 +1000,8 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
             public string HighlightPreTag { get; set; }
             public string HighlightPostTag { get; set; }
+
+            public bool MergeHighlights { get; set; }
 
             public AzureQueryMapperState(IEnumerable<IExecutionContext> executionContexts)
             {

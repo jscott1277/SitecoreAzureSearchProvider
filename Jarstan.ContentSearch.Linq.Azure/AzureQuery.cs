@@ -27,16 +27,18 @@ namespace Jarstan.ContentSearch.Linq.Azure
 
         public string HighlightPostTag { get; set; }
 
+        public bool MergeHighlights { get; set; }
+
         public List<Tuple<string, ComparisonType, Analyzer>> UsedAnalyzers { get; protected set; }
 
         public List<IExecutionContext> ExecutionContexts { get; protected set; }
 
-        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, string preTag, string postTag, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers)
-         : this(query, filter, methods, virtualFieldProcessors, facetQueries, highlights, preTag, postTag, usedAnalyzers, new List<IExecutionContext>(0))
+        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, string preTag, string postTag, bool mergeHighlights, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers)
+         : this(query, filter, methods, virtualFieldProcessors, facetQueries, highlights, preTag, postTag, mergeHighlights, usedAnalyzers, new List<IExecutionContext>(0))
         {
             
         }
-        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, string preTag, string postTag, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers, IEnumerable<IExecutionContext> executionContexts)
+        public AzureQuery(Query query, Query filter, IEnumerable<QueryMethod> methods, IEnumerable<IFieldQueryTranslator> virtualFieldProcessors, IEnumerable<FacetQuery> facetQueries, List<string> highlights, string preTag, string postTag, bool mergeHighlights, IEnumerable<Tuple<string, ComparisonType, Analyzer>> usedAnalyzers, IEnumerable<IExecutionContext> executionContexts)
         {
             this.Query = query;
             this.Filter = filter;
@@ -48,6 +50,7 @@ namespace Jarstan.ContentSearch.Linq.Azure
             this.Highlights = highlights;
             HighlightPreTag = preTag;
             HighlightPostTag = postTag;
+            MergeHighlights = mergeHighlights;
         }
 
         public override string ToString()

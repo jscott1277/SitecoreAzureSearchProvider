@@ -257,8 +257,21 @@ namespace Jarstan.ContentSearch.AzureProvider
         private HighlightSearchResults<AzureSearchResultItem> ExecuteGetHighlightResults(AzureQuery query)
         {
             var results = ExecuteQueryAgainstAzure(query, null, query.Highlights);
-            var hits = ApplySearchMethods<AzureSearchResultItem>(query, results).GetSearchHits();
-            return new HighlightSearchResults<AzureSearchResultItem>(hits, (int)results.Count);
+            var hits = ApplySearchMethods<AzureSearchResultItem>(query, results).GetSearchHits().ToList();
+
+            if (query.MergeHighlights)
+            {
+                for (var i = 0; i < hits.Count; i++)
+                {
+                    foreach (var highlight in hits[i].HighlightResults)
+                    {
+                        hits[i].Document.SetValueByIndexFieldName(highlight.Name, highlight.Values.FirstOrDefault());
+                    }
+                }
+            }
+
+            var azureResults = new HighlightSearchResults<AzureSearchResultItem>(hits, (int)results.Count);
+            return azureResults;
         }
 
         private IDictionary<string, ICollection<KeyValuePair<string, int>>> GetFacets(AzureQuery query, IEnumerable<string> facetFields, int? minResultCount, IEnumerable<string> filters, bool? sort, string prefix, int? limit)

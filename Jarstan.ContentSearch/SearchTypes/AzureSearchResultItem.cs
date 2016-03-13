@@ -25,6 +25,37 @@ namespace Jarstan.ContentSearch.SearchTypes
     {
         private readonly Dictionary<string, object> fields = new Dictionary<string, object>();
 
+        public void SetValueByIndexFieldName(string indexFieldName, string value)
+        {
+            var props = from p in this.GetType().GetProperties()
+                        let attr = p.GetCustomAttributes(typeof(IndexFieldAttribute), true)
+                        where attr.Length == 1
+                        select new { Property = p, Attribute = attr.First() as IndexFieldAttribute };
+
+            var prop = props.FirstOrDefault(p => p.Attribute.IndexFieldName == indexFieldName);
+            if (prop != null)
+            {
+                var s = prop.Property.GetValue(this);
+                prop.Property.SetValue(this, value);
+            }
+        }
+
+        public T GetValueByIndexFieldName<T>(string indexFieldName)
+        {
+            var props = from p in this.GetType().GetProperties()
+                        let attr = p.GetCustomAttributes(typeof(IndexFieldAttribute), true)
+                        where attr.Length == 1
+                        select new { Property = p, Attribute = attr.First() as IndexFieldAttribute };
+
+            var prop = props.FirstOrDefault(p => p.Attribute.IndexFieldName == indexFieldName);
+            if (prop != null)
+            {
+                return (T)prop.Property.GetValue(this);
+            }
+
+            return default(T);
+        }
+
         [DataMember, IndexField("s__smallcreateddate")]
         public virtual DateTimeOffset CreatedDate { get; set; }
 
@@ -201,5 +232,23 @@ namespace Jarstan.ContentSearch.SearchTypes
         //    }
         //    return Queryable.Where(context.GetQueryable<TResult>(new CultureExecutionContext(new CultureInfo(Language))), expression);
         //}
+    }
+
+    public static class AttributeExtensions
+    {
+        public static TValue GetAttributeValue<TAttribute, TValue>(
+            this Type type,
+            Func<TAttribute, TValue> valueSelector)
+            where TAttribute : System.Attribute
+        {
+            var att = type.GetCustomAttributes(
+                typeof(TAttribute), true
+            ).FirstOrDefault() as TAttribute;
+            if (att != null)
+            {
+                return valueSelector(att);
+            }
+            return default(TValue);
+        }
     }
 }

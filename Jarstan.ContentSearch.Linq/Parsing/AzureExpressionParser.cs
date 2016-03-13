@@ -175,15 +175,19 @@ namespace Jarstan.ContentSearch.Linq.Parsing
         {
             string preTag = "<em>";
             string postTag = "</em>";
-            if (methodCall.Arguments.Count == 3)
+            bool mergeHighlights = false;
+            if (methodCall.Arguments.Count == 4)
             {
                 var queryNode = Visit(GetArgument(methodCall.Arguments, 1));
                 preTag = (string)((ConstantNode)queryNode).Value;
 
                 queryNode = Visit(GetArgument(methodCall.Arguments, 2));
                 postTag = (string)((ConstantNode)queryNode).Value;
+
+                queryNode = Visit(GetArgument(methodCall.Arguments, 3));
+                mergeHighlights = (bool)((ConstantNode)queryNode).Value;
             }
-            return new GetHighlightResultsNode(this.Visit(methodCall.Arguments[0]), preTag, postTag);
+            return new GetHighlightResultsNode(this.Visit(methodCall.Arguments[0]), preTag, postTag, mergeHighlights);
         }
 
         protected virtual QueryNode VisitHighlightOnMethod(MethodCallExpression methodCall)

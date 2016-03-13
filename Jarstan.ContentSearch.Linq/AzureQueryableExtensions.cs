@@ -29,15 +29,16 @@ namespace Jarstan.ContentSearch.Linq
             }));
         }
 
-        public static HighlightSearchResults<TSource> GetHighlightResults<TSource>(this IQueryable<TSource> source, string preTag = "<em>", string postTag = "</em>")
+        public static HighlightSearchResults<TSource> GetHighlightResults<TSource>(this IQueryable<TSource> source, string preTag = "<em>", string postTag = "</em>", bool mergeHighlights = false)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
-            return source.Provider.Execute<HighlightSearchResults<TSource>>(Expression.Call(null, ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)), new Expression[3]
+            return source.Provider.Execute<HighlightSearchResults<TSource>>(Expression.Call(null, ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource)), new Expression[4]
             {
                 source.Expression,
                 Expression.Constant(preTag),
-                Expression.Constant(postTag)
+                Expression.Constant(postTag),
+                Expression.Constant(mergeHighlights)
             }));
         }
     }

@@ -20,7 +20,7 @@ namespace Website
         {
             try
             {
-                using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-index").CreateSearchContext())
+                using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-media-index").CreateSearchContext())
                 {
                     var predicate = PredicateBuilder.True<AzureSearchResultItem>();
                     predicate = predicate.And(s => s.Language == "en");
@@ -59,7 +59,7 @@ namespace Website
                     //var facets2 = queryable.FacetOn(o => o.TemplateName, 4, new List<string>() { "Jpeg", "Image" }).GetFacets();
 
                     //GetHighlightResults
-                    var results = queryable.HighlightOn(h => h.TemplateName).GetHighlightResults("<b>", "</b>");
+                    var results = queryable.HighlightOn(h => h.TemplateName).HighlightOn(h => h.Language).GetHighlightResults("<b>", "</b>", true);
 
                     //Or
 

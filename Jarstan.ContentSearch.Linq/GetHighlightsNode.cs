@@ -14,6 +14,8 @@ namespace Jarstan.ContentSearch.Linq
         public string PreTag { get; set; }
         public string PostTag { get; set; }
 
+        public bool MergeHighlights { get; set; }
+
         public override QueryNodeType NodeType
         {
             get
@@ -39,11 +41,12 @@ namespace Jarstan.ContentSearch.Linq
             }
         }
 
-        public GetHighlightResultsNode(QueryNode sourceNode, string preTag, string postTag)
+        public GetHighlightResultsNode(QueryNode sourceNode, string preTag, string postTag, bool mergeHighlights)
         {
             this.SourceNode = sourceNode;
             this.PreTag = preTag;
             this.PostTag = postTag;
+            this.MergeHighlights = mergeHighlights;
         }
     }
 }
