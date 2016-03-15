@@ -36,14 +36,6 @@ namespace Jarstan.ContentSearch.AzureProvider
             AzureIndexFields = new ConcurrentQueue<AzureField>();
         }
 
-        public bool ContainsDefaultScoringProfile()
-        {
-            if (AzureIndex == null)
-                AzureIndex = index.AzureServiceClient.Indexes.Get(index.Name);
-
-            return AzureIndex.ScoringProfiles.Any(p => p.Name == index.AzureConfiguration.AzureDefaultScoringProfileName);
-        }
-
         public void AddAzureIndexFields(List<AzureField> indexFields)
         {
             foreach (var field in indexFields)
@@ -100,6 +92,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                         {
                             definition.ScoringProfiles = new List<ScoringProfile>();
                             definition.ScoringProfiles.Add(scoringProfile);
+                            definition.DefaultScoringProfile = index.AzureConfiguration.AzureDefaultScoringProfileName;
                         }
                     }
 

@@ -319,12 +319,6 @@ namespace Jarstan.ContentSearch.AzureProvider
             searchParams.SearchMode = SearchMode.Any;
             searchParams.QueryType = QueryType.Full;
 
-            var azureIndexSchema = context.Index.Schema as AzureIndexSchema;
-            if (azureIndexSchema != null && azureIndexSchema.ContainsDefaultScoringProfile())
-            {
-                searchParams.ScoringProfile = ((AzureIndex)context.Index).AzureConfiguration.AzureDefaultScoringProfileName;
-            }
-
             var sorting = GetSorting(query);
             if (sorting != null)
             {
