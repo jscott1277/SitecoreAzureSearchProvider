@@ -10,9 +10,9 @@ namespace Jarstan.ContentSearch.AzureProvider
 {
     public interface IAzureSearchIndexSchema
     {
-        ConcurrentQueue<Field> AzureIndexFields { get; set; }
-        void AddAzureIndexFields(List<Field> indexFields);
-        void AddAzureIndexField(Field indexField);
+        ConcurrentQueue<AzureField> AzureIndexFields { get; set; }
+        void AddAzureIndexFields(List<AzureField> indexFields);
+        void AddAzureIndexField(AzureField indexField);
         bool AzureSchemaBuilt { get; set; }
         void BuildAzureIndexSchema(AzureField keyField, AzureField idField);
         bool ReconcileAzureIndexSchema(Document document, int retryCount = 0);

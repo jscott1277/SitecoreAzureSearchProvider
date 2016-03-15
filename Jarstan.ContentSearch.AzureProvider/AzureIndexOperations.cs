@@ -124,7 +124,7 @@ namespace Azure.ContentSearch.AzureProvider
             documentBuilder.AddComputedIndexFields();
             documentBuilder.AddBoost();
             var indexData = new IndexData(index, indexable, documentBuilder);
-            index.AzureSchema.AddAzureIndexFields(indexData.Fields.Where(f => f.Name != indexData.UpdateTerm.Name).Select(f => f.Field).ToList());
+            index.AzureSchema.AddAzureIndexFields(indexData.Fields.Where(f => f.Name != indexData.UpdateTerm.Name).ToList());
             index.AzureSchema.BuildAzureIndexSchema(indexData.UpdateTerm, indexData.FullUpdateTerm);
             return indexData;
         }

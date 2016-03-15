@@ -24,7 +24,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
         }
 
-        public ConcurrentQueue<Field> AzureIndexFields { get; set; }
+        public ConcurrentQueue<AzureField> AzureIndexFields { get; set; }
         public bool AzureSchemaBuilt { get; set; }
 
         private Index AzureIndex { get; set; }
@@ -33,10 +33,18 @@ namespace Jarstan.ContentSearch.AzureProvider
         {
             Assert.ArgumentNotNull(index, "index");
             this.index = index;
-            AzureIndexFields = new ConcurrentQueue<Field>();
+            AzureIndexFields = new ConcurrentQueue<AzureField>();
         }
 
-        public void AddAzureIndexFields(List<Field> indexFields)
+        public bool ContainsDefaultScoringProfile()
+        {
+            if (AzureIndex == null)
+                AzureIndex = index.AzureServiceClient.Indexes.Get(index.Name);
+
+            return AzureIndex.ScoringProfiles.Any(p => p.Name == index.AzureConfiguration.AzureDefaultScoringProfileName);
+        }
+
+        public void AddAzureIndexFields(List<AzureField> indexFields)
         {
             foreach (var field in indexFields)
             {
@@ -44,7 +52,7 @@ namespace Jarstan.ContentSearch.AzureProvider
             }
         }
 
-        public void AddAzureIndexField(Field indexField)
+        public void AddAzureIndexField(AzureField indexField)
         {
             if (!string.IsNullOrEmpty(indexField.Name) && !this.AzureIndexFields.Any(f => f.Name == indexField.Name))
             {
@@ -59,19 +67,41 @@ namespace Jarstan.ContentSearch.AzureProvider
                 try
                 {
                     //this.AzureIndexFields = this.AzureIndexFields.Where(f => f.Name != keyField.Name).ToList();
-                    AddAzureIndexField(keyField.Field);
-                    AddAzureIndexField(idField.Field);
+                    AddAzureIndexField(keyField);
+                    AddAzureIndexField(idField);
 
                     var indexName = index.Name;
                     var fields = AzureIndexFields
                         .GroupBy(f => f.Name)
-                        .Select(f => f.First()).ToList();
+                        .Select(f => f.First().Field).ToList();
 
                     var definition = new Index()
                     {
                         Name = indexName,
                         Fields = fields
                     };
+
+                    var boostFields = AzureIndexFields.Where(f => f.Boost > 0 && f.Field.IsSearchable);
+                    if (boostFields.Any())
+                    {
+                        var scoringProfile = new ScoringProfile();
+                        scoringProfile.Name = index.AzureConfiguration.AzureDefaultScoringProfileName;
+                        scoringProfile.TextWeights = new TextWeights(new Dictionary<string, double>());
+
+                        foreach (var boostField in boostFields)
+                        {
+                            if (!scoringProfile.TextWeights.Weights.Any(w => w.Key == boostField.Name))
+                            {
+                                scoringProfile.TextWeights.Weights.Add(boostField.Name, boostField.Boost);
+                            }
+                        }
+
+                        if (scoringProfile.TextWeights.Weights.Any())
+                        {
+                            definition.ScoringProfiles = new List<ScoringProfile>();
+                            definition.ScoringProfiles.Add(scoringProfile);
+                        }
+                    }
 
                     AzureIndex = index.AzureServiceClient.Indexes.Create(definition);
                     this.AzureSchemaBuilt = true;
@@ -98,7 +128,8 @@ namespace Jarstan.ContentSearch.AzureProvider
                             object objVal;
                             document.TryGetValue(key, out objVal);
                             var field = AzureFieldBuilder.BuildField(key, objVal, index);
-                            AddAzureIndexField(field);
+                            var azureField = new AzureField(key, objVal, field);
+                            AddAzureIndexField(azureField);
                         }
                     }
                 }
@@ -108,7 +139,7 @@ namespace Jarstan.ContentSearch.AzureProvider
                     var indexName = index.Name;
                     var fields = AzureIndexFields
                         .GroupBy(f => f.Name)
-                        .Select(f => f.First()).ToList();
+                        .Select(f => f.First().Field).ToList();
 
                     AzureIndex.Fields = fields;
                     AzureIndex = index.AzureServiceClient.Indexes.CreateOrUpdate(AzureIndex);

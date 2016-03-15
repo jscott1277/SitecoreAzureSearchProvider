@@ -3,6 +3,7 @@ using Sitecore.Abstractions;
 using Sitecore.ContentSearch;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Xml;
 
 namespace Jarstan.ContentSearch.AzureProvider
@@ -186,9 +187,11 @@ namespace Jarstan.ContentSearch.AzureProvider
         public float ParseBoost(string value)
         {
             float result;
-            if (!float.TryParse(value, out result))
-                return 1f;
-            return result;
+            if (Single.TryParse(value.Replace("f", string.Empty), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+            return 1f;
         }
     }
 }

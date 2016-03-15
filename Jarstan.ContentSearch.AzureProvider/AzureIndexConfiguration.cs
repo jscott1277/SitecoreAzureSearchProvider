@@ -13,6 +13,8 @@ namespace Jarstan.ContentSearch.AzureProvider
         public int AzureSearchRetryInitialInterval { get; set; }
         public int AzureSearchRetryIncrement { get; set; }
 
+        public string AzureDefaultScoringProfileName { get; set; }
+
         public IIndexDocumentPropertyMapper<Document> IndexDocumentPropertyMapper { get; set; }
 
         public AzureIndexConfiguration()
