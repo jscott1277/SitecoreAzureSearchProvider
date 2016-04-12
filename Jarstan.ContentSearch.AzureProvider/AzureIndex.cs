@@ -23,6 +23,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Microsoft.Azure;
 
 namespace Jarstan.ContentSearch.AzureProvider
 {
@@ -194,9 +195,12 @@ namespace Jarstan.ContentSearch.AzureProvider
         }
 
         private void SetupAzureSearchClient()
-        { 
+        {
+            var searchName = CloudConfigurationManager.GetSetting("AzureSearchServiceName") ?? AzureConfiguration.AzureSearchServiceName;
+            var searchKey = CloudConfigurationManager.GetSetting("AzureSearchServiceApiKey") ?? AzureConfiguration.AzureSearchServiceApiKey;
+
             //create client/index for indexing
-            AzureServiceClient = new SearchServiceClient(AzureConfiguration.AzureSearchServiceName, new SearchCredentials(AzureConfiguration.AzureSearchServiceApiKey));
+            AzureServiceClient = new SearchServiceClient(searchName, new SearchCredentials(searchKey));
             AzureIndexClient = AzureServiceClient.Indexes.GetClient(Name);
             var retryStrategy = new IncrementalRetryStrategy(AzureConfiguration.AzureSearchRetryCount, TimeSpan.FromSeconds(AzureConfiguration.AzureSearchRetryInitialInterval), TimeSpan.FromSeconds(AzureConfiguration.AzureSearchRetryIncrement));
             var retryPolicy = new RetryPolicy<AzureErrorIndexDetectionStrategy>(retryStrategy);
