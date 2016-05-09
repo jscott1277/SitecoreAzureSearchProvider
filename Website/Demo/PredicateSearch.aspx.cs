@@ -15,15 +15,15 @@ namespace Website.Demo
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            using (var context = ContentSearchManager.GetIndex("azure-sitecore-web-index").CreateSearchContext())
+            using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-media-index").CreateSearchContext())
             {
                 var predicate = PredicateBuilder.True<AzureSearchResultItem>();
-                predicate = predicate.And(s => s.Content.Contains("Home"));
+                predicate = predicate.And(s => s.Content.Contains("android"));
                 predicate = predicate.And(s => s.Language == "en");
                 var queryable = context.GetQueryable<AzureSearchResultItem>();
                 queryable = queryable.Where(predicate);
 
-                var results = queryable.GetResults();
+                var results = queryable.Take(10).GetResults();
 
                 gvResults.DataSource = results.Hits.Select(d => d.Document);
                 gvResults.DataBind();

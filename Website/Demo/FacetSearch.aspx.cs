@@ -14,10 +14,10 @@ namespace Website.Demo
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            using (var context = ContentSearchManager.GetIndex("azure-sitecore-web-index").CreateSearchContext())
+            using (var context = ContentSearchManager.GetIndex("azure-sitecore-master-media-index").CreateSearchContext())
             {
                 var queryable = context.GetQueryable<AzureSearchResultItem>();
-                queryable = queryable.Where(s => s.Content == "Home");
+                queryable = queryable.Where(s => s.Content == "android");
                 queryable = queryable.Where(s => s.Language == "en");
 
                 var results = queryable
@@ -28,7 +28,7 @@ namespace Website.Demo
                 gvFacetResults.DataBind();
 
                 var queryable2 = context.GetQueryable<AzureSearchResultItem>();
-                queryable2 = queryable2.Where(s => s.Content.Contains("Home"));
+                queryable2 = queryable2.Where(s => s.Content.Contains("android"));
                 queryable2 = queryable2.Where(s => s.Language == "en");
                 var results2 = queryable.GetResults();
                 gvResults.DataSource = results2.Hits.Select(d => d.Document).Select(r => new { Name = r.Name, TemplateName = r.TemplateName });
