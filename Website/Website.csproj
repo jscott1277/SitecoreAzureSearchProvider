@@ -147,6 +147,41 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComputedFields\RowIdTextField.cs" />
+    <Compile Include="Demo\Default.aspx.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Demo\Default.aspx.designer.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Demo\FacetSearch.aspx.cs">
+      <DependentUpon>FacetSearch.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Demo\FacetSearch.aspx.designer.cs">
+      <DependentUpon>FacetSearch.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Demo\HighlightSearch.aspx.cs">
+      <DependentUpon>HighlightSearch.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Demo\HighlightSearch.aspx.designer.cs">
+      <DependentUpon>HighlightSearch.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Demo\PredicateSearch.aspx.cs">
+      <DependentUpon>PredicateSearch.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Demo\PredicateSearch.aspx.designer.cs">
+      <DependentUpon>PredicateSearch.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Demo\SimpleSearch.aspx.cs">
+      <DependentUpon>SimpleSearch.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Demo\SimpleSearch.aspx.designer.cs">
+      <DependentUpon>SimpleSearch.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Search.aspx.cs">
       <DependentUpon>Search.aspx</DependentUpon>
@@ -164,6 +199,11 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Demo\Default.aspx" />
+    <Content Include="Demo\FacetSearch.aspx" />
+    <Content Include="Demo\HighlightSearch.aspx" />
+    <Content Include="Demo\PredicateSearch.aspx" />
+    <Content Include="Demo\SimpleSearch.aspx" />
     <Content Include="Scripts\jquery-1.5.1-vsdoc.js" />
     <Content Include="Scripts\jquery-1.5.1.js" />
     <Content Include="Scripts\jquery-1.5.1.min.js" />
