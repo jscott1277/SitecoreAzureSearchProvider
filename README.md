@@ -1,3 +1,6 @@
+If you are using Sitecore 8.2 Update 1 or later, Sitecore has official support for Azure Search:
+https://doc.sitecore.net/sitecore%20experience%20platform/setting%20up%20%20maintaining/search%20and%20indexing/sitecore%20azure%20search%20overview
+
 # Sitecore 8.1 Azure Search Provider
 A new search provider to use in place of the default Lucene search provider in Sitecore 8.1.  This provider uses Azure Search, which is a cloud based search provider, as opposed to the file based, Lucene search provider.  See the Issues tab or the Wiki for information on current issues.
 
